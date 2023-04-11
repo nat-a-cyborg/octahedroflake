@@ -1,0 +1,6 @@
+---
+Python:
+  beautifiers:
+  - YAPF
+  YAPF:
+    prefer_beautifier_config: true
