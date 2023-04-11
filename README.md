@@ -48,11 +48,12 @@ To view a full list of command-line options, run:
 
 ## File Descriptions
 
-### octahedroflake.py
+### [octahedroflake.py](https://github.com/nat-a-cyborg/octahedroflake/blob/main/octahedroflake.py)
 
 This Python script generates the Octahedroflake using CadQuery. It defines the parameters and functions necessary to create the fractal and exports the result as an STL file.
 
-### run.sh
+### [run.sh](https://github.com/nat-a-cyborg/octahedroflake/blob/main/run.sh)
+
 
 This Bash script streamlines running the \`octahedroflake.py\` script by offering a user-friendly interface. Specify various parameters, such as the number of iterations, layer height, nozzle diameter, and model height, through command-line arguments or interactive prompts. The script also provides a summary of the resulting model's dimensions and other characteristics.
 
