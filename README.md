@@ -2,9 +2,7 @@
 
 This repository contains the CadQuery code and an accompanying Bash script to generate a 3D octahedron fractal called the "Octahedroflake." The Octahedroflake is a higher-dimensional analog of the Sierpinski Triangle, drawing inspiration from the Sierpinski Pyramid.
 
-
-![Social Preview]https://repository-images.githubusercontent.com/626647438/cb055930-87fd-490b-80b1-48fa105da8bc
-
+![Social Preview](https://repository-images.githubusercontent.com/626647438/cb055930-87fd-490b-80b1-48fa105da8bc)
 ## Table of Contents
 
 - [Pre-generated Models](#pre-generated-models)
