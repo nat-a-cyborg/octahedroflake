@@ -273,15 +273,9 @@ def make_ribs(order):
     return four_ribs
 
 def make_logo():
-    if FINAL_ORDER < 3:
-        size = 1
-    elif FINAL_ORDER == 3:
-        size = 2
-    else:
-        size = 2
-
+    size = 1 if FINAL_ORDER < 3 else 2
     part_name = inspect.currentframe().f_code.co_name
-    part_name = f'{part_name}[{str(size)}]'
+    part_name = f'{part_name}[{size}]'
 
     cached = get_cached_model(part_name, order=FINAL_ORDER)
     if cached is not None:
@@ -296,12 +290,10 @@ def make_logo():
 
     if FINAL_ORDER == 1:
         z_shift = z_shift_to_top
+        shift = 0
     else:
         z_shift = z_shift_to_top - (PYRAMID_HEIGHT * factor)
 
-    if FINAL_ORDER == 1:
-        shift = 0
-    else:
         shift = EDGE_SIZE / 2 * factor
 
     box_size = EDGE_SIZE * pow(2, size + 1)
