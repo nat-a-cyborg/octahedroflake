@@ -122,7 +122,7 @@ confirm() {
       echo "${YELLOW}Height factor:${RESET} ${height_factor}"
       echo "${YELLOW}Full size:${RESET} ${full_size} mm"
       echo "${YELLOW}Size multiplier:${RESET} ${size_multiplier}"
-
+      echo "python3 $(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
 
       read -rp "${YELLOW}Do you want to continue? [Y/n]${RESET} " response
       case "$response" in
@@ -147,7 +147,7 @@ main() {
   confirm
 
   echo "${GREEN}Running the Python script...${RESET}"
-  python "$(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
+  python3 "$(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
   echo "${GREEN}Done.${RESET}"
 }
 

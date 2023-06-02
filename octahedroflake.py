@@ -1,7 +1,9 @@
 """
 octahedroflake.py
 
-This script generates a printable 3D octahedron fractal called the "Octahedroflake," which is a higher-dimensional analog of the Sierpinski Triangle. The algorithm used to create the Octahedroflake is based on the iterative subdivision of an octahedron. 
+This script generates a printable 3D octahedron fractal called the "Octahedroflake,"
+which is a higher-dimensional analog of the Sierpinski Triangle. The algorithm used
+to create the Octahedroflake is based on the iterative subdivision of an octahedron.
 
 For more information about an octahedron flake, see:
 https://en.wikipedia.org/wiki/N-flake#Octahedron_flake
@@ -19,7 +21,7 @@ Options:
     -m, --model-height  Model height in mm (default: 60).
 """
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -66,6 +68,7 @@ PART_CACHE_STEP_DIR = 'part_cache'
 PART_CACHE_STL_DIR = 'parts_stl'
 OUTPUT_DIR = 'output'
 
+
 def report(message, *, time_stamp=True, order=None, extra_line=False):
 
     if order is not None:
@@ -80,9 +83,11 @@ def report(message, *, time_stamp=True, order=None, extra_line=False):
 
     print(message)
 
+
 def remove_blanks(string):
     pattern = re.compile(r'\s+')
     return re.sub(pattern, '', string)
+
 
 def name_for_cache(part_name, order=None):
     if order is not None:
@@ -101,6 +106,7 @@ def name_for_cache(part_name, order=None):
 
     return part_name
 
+
 def get_cached_model(name, order=None):
     part_name = name_for_cache(name, order=order)
 
@@ -118,10 +124,12 @@ def get_cached_model(name, order=None):
     report(f'   ❌ {name} not found in cache', order=order)
     return None
 
+
 def cache_model(part, part_name, order=None):
     coded_part_name = name_for_cache(part_name, order)
     part_cash[coded_part_name] = part
     report(f"   📥 {part_name}", order=order)
+
 
 def output(result, *, name, path, stl=False, step=False, svg=False):
     file_path = path
@@ -160,19 +168,9 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
                 "strokeColor": (0, 0, 0),
                 "hiddenColor": (90, 90, 90),
                 "showHidden": True,
-                },
-            )
+            },
+        )
 
-def show_thing(thing, *, name=None, alpha=0, color=(10, 160, 240)):
-    try:
-        show_object(
-            thing, name=name, options={
-                'alpha': alpha,
-                'color': color
-                }
-            )
-    except:
-        pass
 
 def save_caches_to_disk():
     global part_cash
@@ -181,6 +179,7 @@ def save_caches_to_disk():
             output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
 
     part_cash = {}  # Clear out the ram cache
+
 
 def make_single_pyramid(order):
     part_name = inspect.currentframe().f_code.co_name
@@ -199,17 +198,18 @@ def make_single_pyramid(order):
 
     pyramid = cq.Workplane('XZ').workplane(
         offset=-base_size / 2
-        ).moveTo(-base_size / 2, 0).lineTo(base_size / 2,
-                                           0).lineTo(base_size / 2,
-                                                     LAYER_HEIGHT).lineTo(0,
-                                                                          height).lineTo(-base_size / 2,
-                                                                                         LAYER_HEIGHT).close().extrude(base_size)
+    ).moveTo(-base_size / 2, 0).lineTo(base_size / 2,
+                                       0).lineTo(base_size / 2,
+                                                 LAYER_HEIGHT).lineTo(0,
+                                                                      height).lineTo(-base_size / 2,
+                                                                                     LAYER_HEIGHT).close().extrude(base_size)
 
     pyramid = pyramid.intersect(pyramid.rotateAboutCenter((0, 0, 1), 90))
 
     cache_model(pyramid, part_name, order=order)
 
     return pyramid
+
 
 def make_ribs(order):
 
@@ -223,18 +223,19 @@ def make_ribs(order):
     report('🩻  make some ribs', order=order)
 
     rib = plane.workplane(offset=-LAYER_HEIGHT
-                         ).rect(RIB_WIDTH,
-                                RIB_WIDTH * 2).extrude(EDGE_SIZE * pow(2, order) + LAYER_HEIGHT).faces('<Z').workplane(20).split(
-                                    keepBottom=True
-                                    ).rotateAboutCenter((0, 0, 1), 45).rotate(
-                                        axisStartPoint=(0, 0, 0), axisEndPoint=(1, 1, 0), angleDegrees=45
-                                        ).translate((0, 0, LAYER_HEIGHT)).intersect(make_single_pyramid(order=order))
+                          ).rect(RIB_WIDTH,
+                                 RIB_WIDTH * 2).extrude(EDGE_SIZE * pow(2, order) + LAYER_HEIGHT).faces('<Z').workplane(20).split(
+        keepBottom=True
+    ).rotateAboutCenter((0, 0, 1), 45).rotate(
+        axisStartPoint=(0, 0, 0), axisEndPoint=(1, 1, 0), angleDegrees=45
+    ).translate((0, 0, LAYER_HEIGHT)).intersect(make_single_pyramid(order=order))
 
     two_ribs = rib.union(rib.mirror(mirrorPlane='ZY'))
     four_ribs = two_ribs.union(two_ribs.mirror(mirrorPlane='ZX'))
 
     cache_model(four_ribs, part_name, order=order)
     return four_ribs
+
 
 def make_logo():
     size = 1 if FINAL_ORDER < 3 else 2
@@ -265,8 +266,8 @@ def make_logo():
     box = (
         cq.Workplane('XY').box(box_size, box_size, box_size).translate(
             (box_size / 2, box_size / 2, 0)
-            ).rotate(axisStartPoint=(0, 0, 0), axisEndPoint=(0, 0, 1), angleDegrees=-45)
-        )
+        ).rotate(axisStartPoint=(0, 0, 0), axisEndPoint=(0, 0, 1), angleDegrees=-45)
+    )
 
     move_multiplier = factor * EDGE_SIZE / 2
     scale_multiplier = factor * EDGE_SIZE / 2
@@ -276,11 +277,12 @@ def make_logo():
     result = (
         make_single_pyramid(order=size).intersect(box).union(
             logo.translate((move_multiplier * 0.8, move_multiplier * -0.4, move_multiplier * 0.25))
-            ).translate((shift, shift, z_shift))
-        )
+        ).translate((shift, shift, z_shift))
+    )
 
     cache_model(result, part_name, order=FINAL_ORDER)
     return result
+
 
 def make_gaps(order):
     plane = cq.Workplane('XY')
@@ -298,6 +300,7 @@ def make_gaps(order):
 
     cache_model(gaps, part_name, order)
     return gaps
+
 
 def make_fractal_pyramid(order):
     part_name = inspect.currentframe().f_code.co_name
@@ -335,13 +338,14 @@ def make_fractal_pyramid(order):
 
     result = (
         result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)
-                                      ).union(south).union(west).union(north).union(east).translate(
-                                          (0, 0, height - layer_height_2)
-                                          ).cut(new_gaps).union(new_ribs)
-        )
+                                       ).union(south).union(west).union(north).union(east).translate(
+            (0, 0, height - layer_height_2)
+        ).cut(new_gaps).union(new_ribs)
+    )
 
     cache_model(result, part_name, order=order)
     return result
+
 
 def make_final_mirror():
     part_name = inspect.currentframe().f_code.co_name
@@ -354,6 +358,7 @@ def make_final_mirror():
     mirrored = pyramid_fractal.mirror(mirrorPlane='XY').translate((0, 0, LAYER_HEIGHT))
     cache_model(mirrored, part_name, order=FINAL_ORDER)
     return mirrored
+
 
 def make_stand(order):
     part_name = inspect.currentframe().f_code.co_name
@@ -388,6 +393,7 @@ def make_stand(order):
     cache_model(stand, part_name, order=order)
     return stand
 
+
 def export_pyramid():
     base_size = EDGE_SIZE * pow(2, FINAL_ORDER)
     solid_base = cq.Workplane('XY').rect(base_size, base_size).extrude(0.2)
@@ -395,10 +401,11 @@ def export_pyramid():
 
     pyramid_name = (
         f'Sierpinski-Pyramid-{FINAL_ORDER}_{round(FULL_HEIGHT/2)}mm_for_{round(LAYER_HEIGHT, 2)}mm_layer_height_and_{round(NOZZLE_DIAMETER, 2)}mm_nozzle'
-        )
+    )
     directory = f'{OUTPUT_DIR}/{round(NOZZLE_DIAMETER, 2)}mm_nozzle/{round(LAYER_HEIGHT, 2)}mm_layer_height/'
     pyramid_name = remove_blanks(pyramid_name)
     output(pyramid_with_base, name=pyramid_name, path=directory, stl=True)
+
 
 def make_branded_pyramid():
     part_name = inspect.currentframe().f_code.co_name
@@ -411,6 +418,7 @@ def make_branded_pyramid():
     cache_model(branded_pyramid, part_name, order=FINAL_ORDER)
     return branded_pyramid
 
+
 def make_octahedron_fractal():
     part_name = inspect.currentframe().f_code.co_name
     part_name = f'{part_name}-'
@@ -421,6 +429,7 @@ def make_octahedron_fractal():
 
     report('💠  make it!', order=FINAL_ORDER)
 
+    save_caches_to_disk()
     stand = None
     branded_pyramid = make_branded_pyramid()
     export_pyramid()
@@ -435,6 +444,7 @@ def make_octahedron_fractal():
     cache_model(result, part_name, order=FINAL_ORDER)
     return result
 
+
 def run():
 
     start_time = timeit.default_timer()
@@ -443,7 +453,7 @@ def run():
     report(f'full height: {str(FULL_HEIGHT)}')
     report(f'edge size: {EDGE_SIZE}')
 
-    flake = make_octahedron_fractal()  #.rotateAboutCenter((0, 0, 1), 45)
+    flake = make_octahedron_fractal()  # .rotateAboutCenter((0, 0, 1), 45)
     save_caches_to_disk()
 
     name = f'''Octahedroflake-{FINAL_ORDER}_{FULL_HEIGHT}mm_for_{str(round(LAYER_HEIGHT,2))}mm_layer_height_and_{str(round(NOZZLE_DIAMETER,2))}mm_nozzle'''
@@ -462,5 +472,6 @@ def run():
         report(f"Elapsed time: {round(seconds_elapsed/60,2)} minutes")
     else:
         report(f"Elapsed time: {round(seconds_elapsed/60/60,2)} hours")
+
 
 run()
