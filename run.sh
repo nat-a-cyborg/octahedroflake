@@ -19,7 +19,7 @@ readonly RESET=$(tput sgr0)
 readonly DEFAULT_ITERATIONS=4
 readonly DEFAULT_LAYER_HEIGHT=0.2
 readonly DEFAULT_NOZZLE_DIAMETER=0.4
-readonly DEFAULT_MODEL_HEIGHT=150.0
+readonly DEFAULT_MODEL_HEIGHT=200.0
 
 # Define usage and help message
 usage() {

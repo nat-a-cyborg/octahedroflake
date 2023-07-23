@@ -34,3 +34,5 @@ then
 else
     echo "CadQuery 2 is already installed"
 fi
+
+# pip install applescript

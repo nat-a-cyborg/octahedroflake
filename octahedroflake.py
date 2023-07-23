@@ -131,6 +131,16 @@ def cache_model(part, part_name, order=None):
     report(f"   📥 {part_name}", order=order)
 
 
+def save_comments(file_path, note):
+    note += f"\nNOZZLE_DIAMETER: {NOZZLE_DIAMETER}"
+    note += f"\nLAYER_HEIGHT: {LAYER_HEIGHT}"
+    note += f"\nFINAL_ORDER: {FINAL_ORDER}"
+    note += f"\nSIZE_MULTIPLER: {SIZE_MULTIPLER}"
+
+    import applescript
+    applescript.tell.app("Finder", f'set comment of (POSIX file "{file_path}" as alias) to "{note}" as Unicode text')
+
+
 def output(result, *, name, path, stl=False, step=False, svg=False):
     file_path = path
 
@@ -141,22 +151,24 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
 
     name = remove_blanks(name)
     if stl:
-        file_name = file_path + name + '.stl'
-        exporters.export(result, file_name)
+        file_path = file_path + name + '.stl'
+        exporters.export(result, file_path)
+        save_comments(file_path, name)
 
     if step:
-        file_name = file_path + name + '.STEP'
-        report(f'💾 {file_name}')
-        exporters.export(result, file_name, exporters.ExportTypes.STEP)
+        file_path = file_path + name + '.STEP'
+        report(f'💾 {file_path}')
+        exporters.export(result, file_path, exporters.ExportTypes.STEP)
+        save_comments(file_path, name)
 
     if svg:
-        file_name = file_path + name + '.svg'
-        report(f'💾 {file_name}')
-        exporters.export(result, file_name)
+        file_path = file_path + name + '.svg'
+        report(f'💾 {file_path}')
+        exporters.export(result, file_path)
 
         exporters.export(
             result.rotateAboutCenter((0, 0, 1), 135).rotateAboutCenter((0, 1, 0), 90),
-            file_name,
+            file_path,
             opt={
                 "width": 1000,
                 "height": 1000,
@@ -172,13 +184,15 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
         )
 
 
-def save_caches_to_disk():
+def save_caches_to_disk(clear=True):
+    return
     global part_cash
     for part_name, part in part_cash.items():
         if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
             output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
 
-    part_cash = {}  # Clear out the ram cache
+    if clear:
+        part_cash = {}  # Clear out the ram cache
 
 
 def make_single_pyramid(order):
@@ -408,6 +422,9 @@ def export_pyramid():
 
 
 def make_branded_pyramid():
+
+    report('👷🏻‍♀️ About to make a branded pyramid', order=FINAL_ORDER)
+
     part_name = inspect.currentframe().f_code.co_name
 
     cached = get_cached_model(part_name, FINAL_ORDER)
@@ -417,6 +434,25 @@ def make_branded_pyramid():
     branded_pyramid = make_fractal_pyramid(order=FINAL_ORDER).union(make_logo())
     cache_model(branded_pyramid, part_name, order=FINAL_ORDER)
     return branded_pyramid
+
+
+def make_unbranded_pyramid():
+    report('👷🏻‍♀️ About to make an unbranded pyramid', order=FINAL_ORDER)
+
+    part_name = inspect.currentframe().f_code.co_name
+
+    cached = get_cached_model(part_name, FINAL_ORDER)
+    if cached is not None:
+        return cached
+
+    fractal_pyramid = make_fractal_pyramid(order=FINAL_ORDER)
+
+    report('👷🏻‍♀️ finished fractaling! now we brand and combine...', order=FINAL_ORDER)
+
+    save_caches_to_disk(clear=False)
+
+    cache_model(fractal_pyramid, part_name, order=FINAL_ORDER)
+    return fractal_pyramid
 
 
 def make_octahedron_fractal():
