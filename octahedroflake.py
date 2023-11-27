@@ -179,7 +179,6 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
             )
 
 def save_caches_to_disk(clear=True):
-    return
     global part_cash
     for part_name, part in part_cash.items():
         if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
