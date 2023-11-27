@@ -1,7 +1,9 @@
 """
 octahedroflake.py
 
-This script generates a printable 3D octahedron fractal called the "Octahedroflake," which is a higher-dimensional analog of the Sierpinski Triangle. The algorithm used to create the Octahedroflake is based on the iterative subdivision of an octahedron. 
+This script generates a printable 3D octahedron fractal called the "Octahedroflake,"
+which is a higher-dimensional analog of the Sierpinski Triangle. The algorithm used
+to create the Octahedroflake is based on the iterative subdivision of an octahedron.
 
 For more information about an octahedron flake, see:
 https://en.wikipedia.org/wiki/N-flake#Octahedron_flake
@@ -19,7 +21,7 @@ Options:
     -m, --model-height  Model height in mm (default: 60).
 """
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -30,6 +32,9 @@ import re
 import inspect
 import math
 import argparse
+import platform
+import applescript
+
 import cadquery as cq
 from cadquery import exporters
 
@@ -123,6 +128,14 @@ def cache_model(part, part_name, order=None):
     part_cash[coded_part_name] = part
     report(f"   📥 {part_name}", order=order)
 
+def save_comments(file_path, note):
+    if platform.system() == "Darwin":  # Checks if the OS is macOS
+        note += f"\nNOZZLE_DIAMETER: {NOZZLE_DIAMETER}"
+        note += f"\nLAYER_HEIGHT: {LAYER_HEIGHT}"
+        note += f"\nFINAL_ORDER: {FINAL_ORDER}"
+        note += f"\nSIZE_MULTIPLER: {SIZE_MULTIPLER}"
+        applescript.tell.app("Finder", f'set comment of (POSIX file "{file_path}" as alias) to "{note}" as Unicode text')
+
 def output(result, *, name, path, stl=False, step=False, svg=False):
     file_path = path
 
@@ -133,22 +146,24 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
 
     name = remove_blanks(name)
     if stl:
-        file_name = file_path + name + '.stl'
-        exporters.export(result, file_name)
+        file_path = file_path + name + '.stl'
+        exporters.export(result, file_path)
+        save_comments(file_path, name)
 
     if step:
-        file_name = file_path + name + '.STEP'
-        report(f'💾 {file_name}')
-        exporters.export(result, file_name, exporters.ExportTypes.STEP)
+        file_path = file_path + name + '.STEP'
+        report(f'💾 {file_path}')
+        exporters.export(result, file_path, exporters.ExportTypes.STEP)
+        save_comments(file_path, name)
 
     if svg:
-        file_name = file_path + name + '.svg'
-        report(f'💾 {file_name}')
-        exporters.export(result, file_name)
+        file_path = file_path + name + '.svg'
+        report(f'💾 {file_path}')
+        exporters.export(result, file_path)
 
         exporters.export(
             result.rotateAboutCenter((0, 0, 1), 135).rotateAboutCenter((0, 1, 0), 90),
-            file_name,
+            file_path,
             opt={
                 "width": 1000,
                 "height": 1000,
@@ -163,24 +178,14 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
                 },
             )
 
-def show_thing(thing, *, name=None, alpha=0, color=(10, 160, 240)):
-    try:
-        show_object(
-            thing, name=name, options={
-                'alpha': alpha,
-                'color': color
-                }
-            )
-    except:
-        pass
-
-def save_caches_to_disk():
+def save_caches_to_disk(clear=True):
     global part_cash
     for part_name, part in part_cash.items():
         if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
             output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
 
-    part_cash = {}  # Clear out the ram cache
+    if clear:
+        part_cash = {}  # Clear out the ram cache
 
 def make_single_pyramid(order):
     part_name = inspect.currentframe().f_code.co_name
@@ -401,6 +406,9 @@ def export_pyramid():
     output(pyramid_with_base, name=pyramid_name, path=directory, stl=True)
 
 def make_branded_pyramid():
+
+    report('👷🏻‍♀️ About to make a branded pyramid', order=FINAL_ORDER)
+
     part_name = inspect.currentframe().f_code.co_name
 
     cached = get_cached_model(part_name, FINAL_ORDER)
@@ -411,7 +419,25 @@ def make_branded_pyramid():
     cache_model(branded_pyramid, part_name, order=FINAL_ORDER)
     return branded_pyramid
 
-def make_octahedron_fractal():
+def make_unbranded_pyramid():
+    report('👷🏻‍♀️ About to make an unbranded pyramid', order=FINAL_ORDER)
+
+    part_name = inspect.currentframe().f_code.co_name
+
+    cached = get_cached_model(part_name, FINAL_ORDER)
+    if cached is not None:
+        return cached
+
+    fractal_pyramid = make_fractal_pyramid(order=FINAL_ORDER)
+
+    report('👷🏻‍♀️ finished fractaling! now we brand and combine...', order=FINAL_ORDER)
+
+    save_caches_to_disk(clear=False)
+
+    cache_model(fractal_pyramid, part_name, order=FINAL_ORDER)
+    return fractal_pyramid
+
+def make_octahedron_fractal(branded=True):
     part_name = inspect.currentframe().f_code.co_name
     part_name = f'{part_name}-'
 
@@ -421,8 +447,10 @@ def make_octahedron_fractal():
 
     report('💠  make it!', order=FINAL_ORDER)
 
+    save_caches_to_disk()
     stand = None
-    branded_pyramid = make_branded_pyramid()
+
+    pyramid = make_branded_pyramid() if branded else make_unbranded_pyramid()
     export_pyramid()
     mirrored = make_final_mirror()
     stand = make_stand(max(0, FINAL_ORDER - 2))
@@ -430,7 +458,7 @@ def make_octahedron_fractal():
 
     report('🔗 combine with mirrored and stand', order=FINAL_ORDER)
 
-    result = (branded_pyramid.union(mirrored).translate((0, 0, PYRAMID_HEIGHT * pow(2, FINAL_ORDER))).union(stand))
+    result = (pyramid.union(mirrored).translate((0, 0, PYRAMID_HEIGHT * pow(2, FINAL_ORDER))).union(stand))
 
     cache_model(result, part_name, order=FINAL_ORDER)
     return result
@@ -443,7 +471,7 @@ def run():
     report(f'full height: {str(FULL_HEIGHT)}')
     report(f'edge size: {EDGE_SIZE}')
 
-    flake = make_octahedron_fractal()  #.rotateAboutCenter((0, 0, 1), 45)
+    flake = make_octahedron_fractal()  # .rotateAboutCenter((0, 0, 1), 45)
     save_caches_to_disk()
 
     name = f'''Octahedroflake-{FINAL_ORDER}_{FULL_HEIGHT}mm_for_{str(round(LAYER_HEIGHT,2))}mm_layer_height_and_{str(round(NOZZLE_DIAMETER,2))}mm_nozzle'''

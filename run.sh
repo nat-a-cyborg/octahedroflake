@@ -19,7 +19,7 @@ readonly RESET=$(tput sgr0)
 readonly DEFAULT_ITERATIONS=4
 readonly DEFAULT_LAYER_HEIGHT=0.2
 readonly DEFAULT_NOZZLE_DIAMETER=0.4
-readonly DEFAULT_MODEL_HEIGHT=150.0
+readonly DEFAULT_MODEL_HEIGHT=200.0
 
 # Define usage and help message
 usage() {
@@ -43,33 +43,33 @@ no_prompt=false
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help)
-      help_message
-      ;;
-    -i|--iterations)
-      iterations="$2"
-      shift
-      ;;
-    -l|--layer-height)
-      layer_height="$2"
-      shift
-      ;;
-    -n|--nozzle-diameter)
-      nozzle_diameter="$2"
-      shift
-      ;;
-    -m|--model-height)
-      model_height="$2"
-      shift
-      ;;
-    --no-prompt)
-      no_prompt=true
-      ;;
-    *)
-      echo "Invalid option: $1"
-      usage
-      exit 1
-      ;;
+  -h | --help)
+    help_message
+    ;;
+  -i | --iterations)
+    iterations="$2"
+    shift
+    ;;
+  -l | --layer-height)
+    layer_height="$2"
+    shift
+    ;;
+  -n | --nozzle-diameter)
+    nozzle_diameter="$2"
+    shift
+    ;;
+  -m | --model-height)
+    model_height="$2"
+    shift
+    ;;
+  --no-prompt)
+    no_prompt=true
+    ;;
+  *)
+    echo "Invalid option: $1"
+    usage
+    exit 1
+    ;;
   esac
   shift
 done
@@ -122,24 +122,23 @@ confirm() {
       echo "${YELLOW}Height factor:${RESET} ${height_factor}"
       echo "${YELLOW}Full size:${RESET} ${full_size} mm"
       echo "${YELLOW}Size multiplier:${RESET} ${size_multiplier}"
-
+      echo "python3 $(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
 
       read -rp "${YELLOW}Do you want to continue? [Y/n]${RESET} " response
       case "$response" in
-        [yY]|"")
-          return 0
-          ;;
-        [nN])
-          get_parameters
-          ;;
-        *)
-          echo "Invalid response. Please enter 'y', 'n', or press the return key."
-          ;;
+      [yY] | "")
+        return 0
+        ;;
+      [nN])
+        get_parameters
+        ;;
+      *)
+        echo "Invalid response. Please enter 'y', 'n', or press the return key."
+        ;;
       esac
     done
   fi
 }
-
 
 # Main function
 main() {
@@ -147,7 +146,7 @@ main() {
   confirm
 
   echo "${GREEN}Running the Python script...${RESET}"
-  python "$(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
+  python3 "$(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
   echo "${GREEN}Done.${RESET}"
 }
 
@@ -165,4 +164,7 @@ if ! $no_prompt; then
   fi
 fi
 
-open "$DIR/output"
+echo "files are in /output"
+if command -v open >/dev/null 2>&1; then
+  open "$DIR/output"
+fi
