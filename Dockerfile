@@ -1,21 +1,18 @@
-FROM continuumio/miniconda3
-RUN apt-get update -y && \
-	apt install -y libgl1-mesa-glx && \
-	apt-get clean && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN conda install -c conda-forge -c cadquery cadquery=master && \
-	conda clean -a -y
-WORKDIR /cadquery
+FROM cadquery/cadquery:latest
+USER root
 
-# Copy the script and the Python file into the image
-COPY run.sh /home/cq/run.sh
-COPY octahedroflake.py /home/cq/octahedroflake.py
+LABEL maintainer="nat@a-cyborg.com"
 
-# Set execute permissions on the script
-RUN chmod +x /home/cq/run.sh
+RUN apt-get update
+RUN apt-get install bc
+RUN apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
-# Switch back to the cq user
-USER cq
+WORKDIR /home
 
-# Keep the container running with a simple command like tailing a log file
-CMD ["tail", "-f", "/dev/null"]
+COPY run.sh .
+COPY logo_stamp.step .
+COPY octahedroflake.py .
+
+RUN chmod +x run.sh
+CMD ["/home/run.sh"]

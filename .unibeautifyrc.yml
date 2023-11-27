@@ -1,6 +1,6 @@
 ---
 Python:
   beautifiers:
-  - YAPF
+    - YAPF
   YAPF:
     prefer_beautifier_config: true

@@ -43,33 +43,33 @@ no_prompt=false
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help)
-      help_message
-      ;;
-    -i|--iterations)
-      iterations="$2"
-      shift
-      ;;
-    -l|--layer-height)
-      layer_height="$2"
-      shift
-      ;;
-    -n|--nozzle-diameter)
-      nozzle_diameter="$2"
-      shift
-      ;;
-    -m|--model-height)
-      model_height="$2"
-      shift
-      ;;
-    --no-prompt)
-      no_prompt=true
-      ;;
-    *)
-      echo "Invalid option: $1"
-      usage
-      exit 1
-      ;;
+  -h | --help)
+    help_message
+    ;;
+  -i | --iterations)
+    iterations="$2"
+    shift
+    ;;
+  -l | --layer-height)
+    layer_height="$2"
+    shift
+    ;;
+  -n | --nozzle-diameter)
+    nozzle_diameter="$2"
+    shift
+    ;;
+  -m | --model-height)
+    model_height="$2"
+    shift
+    ;;
+  --no-prompt)
+    no_prompt=true
+    ;;
+  *)
+    echo "Invalid option: $1"
+    usage
+    exit 1
+    ;;
   esac
   shift
 done
@@ -126,20 +126,19 @@ confirm() {
 
       read -rp "${YELLOW}Do you want to continue? [Y/n]${RESET} " response
       case "$response" in
-        [yY]|"")
-          return 0
-          ;;
-        [nN])
-          get_parameters
-          ;;
-        *)
-          echo "Invalid response. Please enter 'y', 'n', or press the return key."
-          ;;
+      [yY] | "")
+        return 0
+        ;;
+      [nN])
+        get_parameters
+        ;;
+      *)
+        echo "Invalid response. Please enter 'y', 'n', or press the return key."
+        ;;
       esac
     done
   fi
 }
-
 
 # Main function
 main() {
@@ -165,4 +164,7 @@ if ! $no_prompt; then
   fi
 fi
 
-open "$DIR/output"
+echo "files are in /output"
+if command -v open >/dev/null 2>&1; then
+  open "$DIR/output"
+fi
