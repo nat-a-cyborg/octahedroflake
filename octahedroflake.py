@@ -438,7 +438,7 @@ def make_unbranded_pyramid():
     cache_model(fractal_pyramid, part_name, order=FINAL_ORDER)
     return fractal_pyramid
 
-def make_octahedron_fractal():
+def make_octahedron_fractal(branded=True):
     part_name = inspect.currentframe().f_code.co_name
     part_name = f'{part_name}-'
 
@@ -451,7 +451,6 @@ def make_octahedron_fractal():
     save_caches_to_disk()
     stand = None
 
-    branded = True
     if branded:
         pyramid = make_branded_pyramid()
     else:
