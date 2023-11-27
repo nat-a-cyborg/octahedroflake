@@ -450,11 +450,7 @@ def make_octahedron_fractal(branded=True):
     save_caches_to_disk()
     stand = None
 
-    if branded:
-        pyramid = make_branded_pyramid()
-    else:
-        pyramid = make_unbranded_pyramid()
-
+    pyramid = make_branded_pyramid() if branded else make_unbranded_pyramid()
     export_pyramid()
     mirrored = make_final_mirror()
     stand = make_stand(max(0, FINAL_ORDER - 2))
