@@ -48,6 +48,12 @@ To view a full list of command-line options, run:
 ./run.sh -h
 ```
 
+### Running directly
+
+```
+python3 /home/octahedroflake.py --iterations 6 --layer-height 0.2 --nozzle-diameter 0.4 --size-multiplier 1.377628
+```
+
 ## File Descriptions
 
 ### [octahedroflake.py](https://github.com/nat-a-cyborg/octahedroflake/blob/main/octahedroflake.py)

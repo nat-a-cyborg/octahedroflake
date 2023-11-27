@@ -7,6 +7,7 @@ RUN apt-get update
 RUN apt-get install bc
 RUN apt-get clean && \
   rm -rf /var/lib/apt/lists/*
+RUN pip install applescript
 
 WORKDIR /home
 
