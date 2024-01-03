@@ -76,11 +76,25 @@ As my first CadQuery project, I welcome any input or feedback. Please feel free 
 
 ### BUILD
 
-`docker build -t cadquery:fractal .`
+```
+docker build -t octahedroflake .
+```
+
+```
+docker build -t octahedroflake https://github.com/nat-a-cyborg/octahedroflake.git
+```
+
+### PULL
+
+```
+docker pull natacyborg/octahedroflake
+```
 
 ### RUN
 
-`docker run -v $(pwd)/output:/home/output -it cadquery:fractal`
+```
+docker run -v $(pwd)/output:/home/output -it octahedroflake
+```
 
 ## License
 

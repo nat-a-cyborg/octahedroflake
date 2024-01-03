@@ -33,7 +33,6 @@ import inspect
 import math
 import argparse
 import platform
-import applescript
 
 import cadquery as cq
 from cadquery import exporters
@@ -127,14 +126,6 @@ def cache_model(part, part_name, order=None):
     coded_part_name = name_for_cache(part_name, order)
     part_cash[coded_part_name] = part
     report(f"   📥 {part_name}", order=order)
-
-def save_comments(file_path, note):
-    if platform.system() == "Darwin":  # Checks if the OS is macOS
-        note += f"\nNOZZLE_DIAMETER: {NOZZLE_DIAMETER}"
-        note += f"\nLAYER_HEIGHT: {LAYER_HEIGHT}"
-        note += f"\nFINAL_ORDER: {FINAL_ORDER}"
-        note += f"\nSIZE_MULTIPLER: {SIZE_MULTIPLER}"
-        applescript.tell.app("Finder", f'set comment of (POSIX file "{file_path}" as alias) to "{note}" as Unicode text')
 
 def output(result, *, name, path, stl=False, step=False, svg=False):
     file_path = path
