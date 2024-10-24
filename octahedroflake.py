@@ -41,10 +41,10 @@ from cadquery import exporters
 parser = argparse.ArgumentParser(description='My script description')
 
 # add the command-line arguments
-parser.add_argument('--iterations', type=int, help='the number of iterations')
-parser.add_argument('--layer-height', type=float, help='the layer height in mm')
-parser.add_argument('--nozzle-diameter', type=float, help='the nozzle diameter in mm')
-parser.add_argument('--size-multiplier', type=float, help='how much bigger it should be from default')
+parser.add_argument('--iterations', type=int, default=3, help='the number of iterations')
+parser.add_argument('--layer-height', type=float, default=0.2, help='the layer height in mm')
+parser.add_argument('--nozzle-diameter', type=float, default=0.4, help='the nozzle diameter in mm')
+parser.add_argument('--size-multiplier', type=float, default=1.0, help='size multiplier from default')
 
 # parse the command-line arguments
 args = parser.parse_args()
@@ -54,7 +54,7 @@ LAYER_HEIGHT = args.layer_height
 FINAL_ORDER = args.iterations
 SIZE_MULTIPLER = args.size_multiplier
 
-part_cash = {}
+part_cache = {}
 
 GAP_SIZE = 0.01
 EDGE_SIZE = NOZZLE_DIAMETER * 4 * SIZE_MULTIPLER
@@ -108,11 +108,12 @@ def name_for_cache(part_name, order=None):
 def get_cached_model(name, order=None):
     part_name = name_for_cache(name, order=order)
 
-    if part_name in part_cash:
+    if part_name in part_cache:
         report(f'   ⭐️ {name}', order=order)
-        return part_cash[part_name]
+        return part_cache[part_name]
 
-    file_path = f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'
+    file_path = os.path.join(PART_CACHE_STEP_DIR, f"{part_name}.STEP")
+
     if USE_DISK_CACHE and exists(file_path):
         report(f'   🗃️  load {name}', order=order)
         part = cq.importers.importStep(file_path)
@@ -124,7 +125,7 @@ def get_cached_model(name, order=None):
 
 def cache_model(part, part_name, order=None):
     coded_part_name = name_for_cache(part_name, order)
-    part_cash[coded_part_name] = part
+    part_cache[coded_part_name] = part
     report(f"   📥 {part_name}", order=order)
 
 def output(result, *, name, path, stl=False, step=False, svg=False):
@@ -139,13 +140,11 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
     if stl:
         file_path = file_path + name + '.stl'
         exporters.export(result, file_path)
-        save_comments(file_path, name)
 
     if step:
         file_path = file_path + name + '.STEP'
         report(f'💾 {file_path}')
         exporters.export(result, file_path, exporters.ExportTypes.STEP)
-        save_comments(file_path, name)
 
     if svg:
         file_path = file_path + name + '.svg'
@@ -170,13 +169,13 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
             )
 
 def save_caches_to_disk(clear=True):
-    global part_cash
-    for part_name, part in part_cash.items():
+    global part_cache
+    for part_name, part in part_cache.items():
         if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
             output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
 
     if clear:
-        part_cash = {}  # Clear out the ram cache
+        part_cache = {}  # Clear out the ram cache
 
 def make_single_pyramid(order):
     part_name = inspect.currentframe().f_code.co_name
