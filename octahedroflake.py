@@ -1,3 +1,4 @@
+# @title octahedroflake.py {"vertical-output":true}
 """
 octahedroflake.py
 
@@ -21,9 +22,6 @@ Options:
     -m, --model-height  Model height in mm (default: 60).
 """
 
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import os
 import timeit
 from datetime import datetime
@@ -32,22 +30,41 @@ import re
 import inspect
 import math
 import argparse
-import platform
 
 import cadquery as cq
 from cadquery import exporters
 
 # create the argument parser
-parser = argparse.ArgumentParser(description='My script description')
+parser = argparse.ArgumentParser(description='octahedroflake')
+
+iterations_default = 7  # @param {type:"number"}
+layer_height_default = 0.2
+nozzle_diameter_default = 0.4
+size_multiplier_default = 0.9765625 # @param {type:"number"}
 
 # add the command-line arguments
-parser.add_argument('--iterations', type=int, default=3, help='the number of iterations')
-parser.add_argument('--layer-height', type=float, default=0.2, help='the layer height in mm')
-parser.add_argument('--nozzle-diameter', type=float, default=0.4, help='the nozzle diameter in mm')
-parser.add_argument('--size-multiplier', type=float, default=1.0, help='size multiplier from default')
+parser.add_argument('--iterations', type=int, default=iterations_default, help='the number of iterations')
+parser.add_argument('--layer-height', type=float, default=layer_height_default, help='the layer height in mm')
+parser.add_argument('--nozzle-diameter', type=float, default=nozzle_diameter_default, help='the nozzle diameter in mm')
+parser.add_argument('--size-multiplier', type=float, default=size_multiplier_default, help='size multiplier from default')
 
-# parse the command-line arguments
-args = parser.parse_args()
+try:
+    # parse the command-line arguments
+    args = parser.parse_args()
+except:
+    args = parser.parse_args([])
+
+    if args.iterations is None:
+        args.iterations = iterations_default 
+
+    if args.layer_height is None:
+        args.layer_height = layer_height_default
+
+    if args.nozzle_diameter is None:
+        args.nozzle_diameter = nozzle_diameter_default
+
+    if args.size_multiplier is None:
+        args.size_multiplier = size_multiplier_default  
 
 NOZZLE_DIAMETER = args.nozzle_diameter
 LAYER_HEIGHT = args.layer_height
@@ -59,7 +76,7 @@ part_cache = {}
 GAP_SIZE = 0.01
 EDGE_SIZE = NOZZLE_DIAMETER * 4 * SIZE_MULTIPLER
 RIB_WIDTH = NOZZLE_DIAMETER * 2
-USE_DISK_CACHE = True
+USE_DISK_CACHE = True  # @param {type:"boolean"}
 HEIGHT_FACTOR = 0.7071  # https://www.calculatorsoup.com/calculators/geometry-solids/pyramid.php
 FULL_SIZE = pow(2, FINAL_ORDER) * EDGE_SIZE
 FULL_HEIGHT = math.ceil(FULL_SIZE * 0.7071 * 2)
@@ -169,10 +186,11 @@ def output(result, *, name, path, stl=False, step=False, svg=False):
             )
 
 def save_caches_to_disk(clear=True):
-    global part_cache
-    for part_name, part in part_cache.items():
-        if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
-            output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
+    if USE_DISK_CACHE:
+        global part_cache
+        for part_name, part in part_cache.items():
+            if not exists(f'{PART_CACHE_STEP_DIR}/{part_name}.STEP'):
+                output(result=part, name=part_name, path=PART_CACHE_STEP_DIR, step=True)
 
     if clear:
         part_cache = {}  # Clear out the ram cache
@@ -335,6 +353,14 @@ def make_fractal_pyramid(order):
                                           ).cut(new_gaps).union(new_ribs)
         )
 
+    if False:
+        # seperate steps
+        result = (result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)))
+        report('combine four clones', order=order, debug=False)
+        result = (result.union(south).union(west).union(north).union(east).translate((0, 0, height - layer_height_2)))
+        report('combine gaps and ribs', order=order, debug=False)
+        result = (result.cut(new_gaps).union(new_ribs))
+
     cache_model(result, part_name, order=order)
     return result
 
@@ -383,10 +409,10 @@ def make_stand(order):
     cache_model(stand, part_name, order=order)
     return stand
 
-def export_pyramid():
+def export_pyramid(pyramid):
     base_size = EDGE_SIZE * pow(2, FINAL_ORDER)
     solid_base = cq.Workplane('XY').rect(base_size, base_size).extrude(0.2)
-    pyramid_with_base = make_branded_pyramid().union(solid_base)
+    pyramid_with_base = pyramid.union(solid_base)
 
     pyramid_name = (
         f'Sierpinski-Pyramid-{FINAL_ORDER}_{round(FULL_HEIGHT/2)}mm_for_{round(LAYER_HEIGHT, 2)}mm_layer_height_and_{round(NOZZLE_DIAMETER, 2)}mm_nozzle'
@@ -441,7 +467,7 @@ def make_octahedron_fractal(branded=True):
     stand = None
 
     pyramid = make_branded_pyramid() if branded else make_unbranded_pyramid()
-    export_pyramid()
+    export_pyramid(pyramid)
     mirrored = make_final_mirror()
     stand = make_stand(max(0, FINAL_ORDER - 2))
     save_caches_to_disk()
@@ -461,7 +487,7 @@ def run():
     report(f'full height: {str(FULL_HEIGHT)}')
     report(f'edge size: {EDGE_SIZE}')
 
-    flake = make_octahedron_fractal()  # .rotateAboutCenter((0, 0, 1), 45)
+    flake = make_octahedron_fractal(branded=False)  # .rotateAboutCenter((0, 0, 1), 45)
     save_caches_to_disk()
 
     name = f'''Octahedroflake-{FINAL_ORDER}_{FULL_HEIGHT}mm_for_{str(round(LAYER_HEIGHT,2))}mm_layer_height_and_{str(round(NOZZLE_DIAMETER,2))}mm_nozzle'''
