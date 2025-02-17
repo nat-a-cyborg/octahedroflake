@@ -117,6 +117,23 @@ def report(message, *, time_stamp=True, order=None, extra_line=False):
 def remove_blanks(string):
     return re.sub(r'\s+', '', string)
 
+def balanced_union(shapes):
+    """
+    Perform a union on a list of shapes using a balanced binary tree approach.
+    This can reduce the size of intermediate geometry compounds and help limit peak memory usage.
+    """
+    if not shapes:
+        return None
+    while len(shapes) > 1:
+        new_shapes = []
+        for i in range(0, len(shapes), 2):
+            if i + 1 < len(shapes):
+                new_shapes.append(shapes[i].union(shapes[i + 1]))
+            else:
+                new_shapes.append(shapes[i])
+        shapes = new_shapes
+    return shapes[0]
+
 def name_for_cache(part_name, order=None):
     # Include key parameters that influence the model
     params = f"{NOZZLE_DIAMETER:.2f}-{LAYER_HEIGHT:.2f}-{SIZE_MULTIPLIER:.5f}-{GAP_SIZE:.2f}-{HEIGHT_FACTOR:.4f}"
@@ -288,12 +305,16 @@ def make_fractal_pyramid(order):
     save_caches_to_disk()
     report('🥪 made parts, now union the fractal', order=order)
 
-    final_result = (
-        lower_result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)
-                                            ).union(south).union(west).union(north).union(east).translate(
-                                                (0, 0, height - layer_height_2)
-                                                ).cut(new_gaps).union(new_ribs)
-        )
+    # Group the parts into two balanced unions
+    group_a = balanced_union([lower_result, mirror]).translate((0, 0, (factor - 1) * -layer_height_2))
+    group_b = balanced_union([south, north, east, west])
+
+    # Combine both groups and apply the final translation
+    combined = balanced_union([group_a, group_b]).translate((0, 0, height - layer_height_2))
+
+    # Apply the final boolean operations
+    final_result = combined.cut(new_gaps).union(new_ribs)
+
     save_caches_to_disk()
     return final_result
 
