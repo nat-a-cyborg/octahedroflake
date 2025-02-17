@@ -16,7 +16,7 @@ Usage:
 
 Options:
     -h, --help              Show this help message and exit.
-    -i, --iterations        Number of iterations (default: 3).
+    -i, --iterations        Number of iterations (default: 4).
     -l, --layer-height      Layer height in mm (default: 0.2).
     -n, --nozzle-diameter   Nozzle diameter in mm (default: 0.4).
     --size-multiplier       Size multiplier (default: 0.9765625).
@@ -44,7 +44,7 @@ from cadquery import exporters
 try:
     iterations_default
 except NameError:
-    iterations_default = 3
+    iterations_default = 4
 try:
     layer_height_default
 except NameError:
@@ -60,7 +60,7 @@ except NameError:
 try:
     branded
 except NameError:
-    branded = True
+    branded = False
 
 parser = argparse.ArgumentParser(description='octahedroflake')
 parser.add_argument('-i', '--iterations', type=int, default=iterations_default, help='number of iterations')
@@ -69,10 +69,8 @@ parser.add_argument('-n', '--nozzle-diameter', type=float, default=nozzle_diamet
 parser.add_argument('--size-multiplier', type=float, default=size_multiplier_default, help='size multiplier')
 
 group = parser.add_mutually_exclusive_group()
-group.add_argument('--branded', dest='branded', action='store_true',
-                   help='Include branding in the model (default)')
-group.add_argument('--unbranded', dest='branded', action='store_false',
-                   help='Disable branding in the model')
+group.add_argument('--branded', dest='branded', action='store_true', help='Include branding in the model (default)')
+group.add_argument('--unbranded', dest='branded', action='store_false', help='Disable branding in the model')
 parser.set_defaults(branded=branded)
 
 # Use parse_known_args to ignore extra args (e.g. Colab's -f flag)
@@ -332,7 +330,6 @@ def make_branded_pyramid():
 def make_unbranded_pyramid():
     report('👷🏻‍♀️ About to make an unbranded pyramid', order=FINAL_ORDER)
     fractal_pyramid = make_fractal_pyramid(order=FINAL_ORDER)
-    report('👷🏻‍♀️ Finished fractaling! Now we brand and combine...', order=FINAL_ORDER)
     return fractal_pyramid
 
 @cache_model_decorator
