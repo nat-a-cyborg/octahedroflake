@@ -268,30 +268,35 @@ def make_gaps(order):
 def make_fractal_pyramid(order):
     if order == 0:
         return make_single_pyramid(0)
-    result = make_fractal_pyramid(order=order - 1)
+
+    # Compute the lower order fractal
+    lower_result = make_fractal_pyramid(order=order - 1)
+
     factor = 2**(order - 1)
     shift = EDGE_SIZE / 2 * factor
     height = (COMBINED_HEIGHT + LAYER_HEIGHT) * factor
     layer_height_2 = LAYER_HEIGHT * 2
     z_shift = layer_height_2 - height
     report('👯 make clones', order=order)
-    mirror = result.mirror(mirrorPlane='XY').translate((0, 0, LAYER_HEIGHT))
-    south = result.translate((-shift, shift, z_shift))
-    north = result.translate((shift, -shift, z_shift))
-    east = result.translate((shift, shift, z_shift))
-    west = result.translate((-shift, -shift, z_shift))
+    mirror = lower_result.mirror(mirrorPlane='XY').translate((0, 0, LAYER_HEIGHT))
+    south = lower_result.translate((-shift, shift, z_shift))
+    north = lower_result.translate((shift, -shift, z_shift))
+    east = lower_result.translate((shift, shift, z_shift))
+    west = lower_result.translate((-shift, -shift, z_shift))
     new_ribs = make_ribs(order=order)
     new_gaps = make_gaps(order=order)
-    result = (
-        result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)
-                                      ).union(south).union(west).union(north).union(east).translate(
-                                          (0, 0, height - layer_height_2)
-                                          ).cut(new_gaps).union(new_ribs)
-        )
-    return result
-
     save_caches_to_disk()
     report('🥪 made parts, now union the fractal', order=order)
+
+    final_result = (
+        lower_result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)
+                                            ).union(south).union(west).union(north).union(east).translate(
+                                                (0, 0, height - layer_height_2)
+                                                ).cut(new_gaps).union(new_ribs)
+        )
+    save_caches_to_disk()
+    return final_result
+
 
 @cache_model_decorator
 def make_final_mirror():
