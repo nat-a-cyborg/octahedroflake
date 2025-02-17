@@ -20,6 +20,7 @@ Options:
     -l, --layer-height      Layer height in mm (default: 0.2).
     -n, --nozzle-diameter   Nozzle diameter in mm (default: 0.4).
     --size-multiplier       Size multiplier (default: 0.9765625).
+    --branded               Include branding in the model.
 """
 
 import os
@@ -35,21 +36,47 @@ import cadquery as cq
 from cadquery import exporters
 
 # -----------------------------------------------------------------------------
-# Argument Parsing
+# Parameter Setup: Either from interactive form cell or command-line arguments
 # -----------------------------------------------------------------------------
 
-parser = argparse.ArgumentParser(description='octahedroflake')
-iterations_default = 3
-layer_height_default = 0.2
-nozzle_diameter_default = 0.4
-size_multiplier_default = 0.9765625
+# If running in Colab with an interactive cell above, these may already be defined.
+# Otherwise, use the following defaults.
+try:
+    iterations_default
+except NameError:
+    iterations_default = 3
+try:
+    layer_height_default
+except NameError:
+    layer_height_default = 0.2
+try:
+    nozzle_diameter_default
+except NameError:
+    nozzle_diameter_default = 0.4
+try:
+    size_multiplier_default
+except NameError:
+    size_multiplier_default = 0.9765625
+try:
+    branded
+except NameError:
+    branded = True
 
-parser.add_argument('--iterations', type=int, default=iterations_default, help='number of iterations')
-parser.add_argument('--layer-height', type=float, default=layer_height_default, help='layer height in mm')
-parser.add_argument('--nozzle-diameter', type=float, default=nozzle_diameter_default, help='nozzle diameter in mm')
+parser = argparse.ArgumentParser(description='octahedroflake')
+parser.add_argument('-i', '--iterations', type=int, default=iterations_default, help='number of iterations')
+parser.add_argument('-l', '--layer-height', type=float, default=layer_height_default, help='layer height in mm')
+parser.add_argument('-n', '--nozzle-diameter', type=float, default=nozzle_diameter_default, help='nozzle diameter in mm')
 parser.add_argument('--size-multiplier', type=float, default=size_multiplier_default, help='size multiplier')
 
-args = parser.parse_args()
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--branded', dest='branded', action='store_true',
+                   help='Include branding in the model (default)')
+group.add_argument('--unbranded', dest='branded', action='store_false',
+                   help='Disable branding in the model')
+parser.set_defaults(branded=branded)
+
+# Use parse_known_args to ignore extra args (e.g. Colab's -f flag)
+args, unknown = parser.parse_known_args()
 
 NOZZLE_DIAMETER = args.nozzle_diameter
 LAYER_HEIGHT = args.layer_height
@@ -93,9 +120,11 @@ def remove_blanks(string):
     return re.sub(r'\s+', '', string)
 
 def name_for_cache(part_name, order=None):
+    # Include key parameters that influence the model
+    params = f"{NOZZLE_DIAMETER:.2f}-{LAYER_HEIGHT:.2f}-{SIZE_MULTIPLIER:.5f}-{GAP_SIZE:.2f}-{HEIGHT_FACTOR:.4f}"
     if order is not None:
-        part_name = f'{part_name}[{order}]'
-    key = f"{round(EDGE_SIZE,2)}-{round(LAYER_HEIGHT,2)}-{round(GAP_SIZE,2)}-{HEIGHT_FACTOR}-{NOZZLE_DIAMETER}-{part_name}"
+        params += f"-order{order}"
+    key = f"{params}-{part_name}"
     return remove_blanks(key)
 
 def cache_model(part, part_name, order=None):
@@ -307,7 +336,7 @@ def make_unbranded_pyramid():
     return fractal_pyramid
 
 @cache_model_decorator
-def make_octahedron_fractal(branded=True):
+def make_octahedron_fractal(branded):
     report('💠 make it!', order=FINAL_ORDER)
     pyramid = make_branded_pyramid() if branded else make_unbranded_pyramid()
     export_pyramid(pyramid)
@@ -322,7 +351,7 @@ def run():
     report(f'full_size: {FULL_SIZE}')
     report(f'full height: {FULL_HEIGHT}')
     report(f'edge size: {EDGE_SIZE}')
-    flake = make_octahedron_fractal(branded=False)
+    flake = make_octahedron_fractal(branded=args.branded)
     save_caches_to_disk()
     name = f'Octahedroflake-{FINAL_ORDER}_{FULL_HEIGHT}mm_for_{round(LAYER_HEIGHT,2)}mm_layer_height_and_{round(NOZZLE_DIAMETER,2)}mm_nozzle'
     directory = f'{OUTPUT_DIR}/{round(NOZZLE_DIAMETER,2)}mm_nozzle/{round(LAYER_HEIGHT,2)}mm_layer_height/'
