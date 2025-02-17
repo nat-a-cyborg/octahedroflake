@@ -282,7 +282,6 @@ def make_fractal_pyramid(order):
     west = result.translate((-shift, -shift, z_shift))
     new_ribs = make_ribs(order=order)
     new_gaps = make_gaps(order=order)
-    report('💎 combine clones and parts', order=order)
     result = (
         result.union(mirror).translate((0, 0, (factor - 1) * -layer_height_2)
                                       ).union(south).union(west).union(north).union(east).translate(
@@ -290,6 +289,9 @@ def make_fractal_pyramid(order):
                                           ).cut(new_gaps).union(new_ribs)
         )
     return result
+
+    save_caches_to_disk()
+    report('🥪 made parts, now union the fractal', order=order)
 
 @cache_model_decorator
 def make_final_mirror():
