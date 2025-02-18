@@ -39,22 +39,21 @@ from cadquery import exporters
 # Parameter Setup: Either from interactive form cell or command-line arguments
 # -----------------------------------------------------------------------------
 
-iterations_default = 4
-layer_height_default = 0.2
-nozzle_diameter_default = 0.4
-desired_height_default = 200
-branded = False
+ITERATIONS_DEFAULT = 4
+LAYER_HEIGHT_DEFAULT = 0.2
+NOZZLE_DIAMETER_DEFAULT = 0.4
+DESIRED_HEIGHT_DEFAULT = 200
+BRANDED_DEFAULT = False
 
 parser = argparse.ArgumentParser(description='octahedroflake')
-parser.add_argument('-i', '--iterations', type=int, default=iterations_default, help='number of iterations')
-parser.add_argument('-l', '--layer-height', type=float, default=layer_height_default, help='layer height in mm')
-parser.add_argument('-n', '--nozzle-diameter', type=float, default=nozzle_diameter_default, help='nozzle diameter in mm')
-parser.add_argument('--desired_height', type=float, default=desired_height_default, help='desired height')
+parser.add_argument('-i', '--iterations', type=int, default=ITERATIONS_DEFAULT, help='number of iterations')
+parser.add_argument('-l', '--layer-height', type=float, default=LAYER_HEIGHT_DEFAULT, help='layer height in mm')
+parser.add_argument('-n', '--nozzle-diameter', type=float, default=NOZZLE_DIAMETER_DEFAULT, help='nozzle diameter in mm')
+parser.add_argument('--desired_height', type=float, default=DESIRED_HEIGHT_DEFAULT, help='desired height')
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--branded', dest='branded', action='store_true', help='Include branding in the model (default)')
-group.add_argument('--unbranded', dest='branded', action='store_false', help='Disable branding in the model')
-parser.set_defaults(branded=branded)
+parser.set_defaults(branded=BRANDED_DEFAULT)
 
 # Use parse_known_args to ignore extra args (e.g. Colab's -f flag)
 args, unknown = parser.parse_known_args()
