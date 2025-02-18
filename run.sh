@@ -1,55 +1,82 @@
 #!/bin/bash
 
-# Define python command variable
-PYTHON="python3"
+# -----------------------------------------------------------------------------
+# 1. Enforce Python 3.11
+#    - If default python != 3.11, attempt to switch to python3.11
+#    - If python3.11 is not found, exit
+# -----------------------------------------------------------------------------
+REQUIRED_PYTHON_MINOR="3.11"
 
-# Check Python version
-PY_VERSION=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-if [[ "$PY_VERSION" == "3.13" ]]; then
-  echo "Error: Python 3.13 detected. The OCP package currently fails to install on Python 3.13 (Apple silicon)."
-  echo "Please install and use Python 3.11 (for example, via Homebrew: 'brew install python@3.11') and recreate your virtual environment."
-  exit 1
+PYTHON="python3"
+CURRENT_VERSION=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+
+if [[ "$CURRENT_VERSION" != "$REQUIRED_PYTHON_MINOR" ]]; then
+  echo "Default python is version $CURRENT_VERSION; we need $REQUIRED_PYTHON_MINOR."
+  if command -v python3.11 &>/dev/null; then
+    PYTHON="python3.11"
+    echo "Using $(command -v python3.11) instead."
+  else
+    echo "Error: python3.11 is not installed or not on PATH. Please install Python 3.11."
+    exit 1
+  fi
 fi
 
-# Get the absolute path of the current script and its directory
+# -----------------------------------------------------------------------------
+# 2. Recreate and activate the virtual environment
+# -----------------------------------------------------------------------------
 SCRIPT="$(realpath "$0")"
 DIR="$(dirname "$SCRIPT")"
 cd "$DIR"
 
-# --- Setup Virtual Environment ---
-if [ -z "$VIRTUAL_ENV" ]; then
-  if [ ! -d "venv" ]; then
-    echo "Creating virtual environment..."
-    "$PYTHON" -m venv venv || { echo "Failed to create virtual environment. Exiting."; exit 1; }
-  fi
-  echo "Activating virtual environment..."
-  source "venv/bin/activate"
+if [ ! -d "venv" ]; then
+  echo "Creating virtual environment..."
+  "$PYTHON" -m venv venv || {
+    echo "Failed to create virtual environment with $PYTHON. Exiting."
+    exit 1
+  }
+else
+  echo "Using existing virtual environment..."
 fi
 
-# Upgrade pip (optional but recommended)
-pip install --upgrade pip
+echo "Activating virtual environment..."
+# shellcheck disable=SC1091
+source venv/bin/activate
 
-# --- Install Dependencies ---
-if ! "$PYTHON" -c "import cadquery" &> /dev/null; then
-  echo "CadQuery not found. Installing CadQuery..."
-  pip install cadquery || { echo "Failed to install CadQuery. Exiting."; exit 1; }
+# -----------------------------------------------------------------------------
+# 3. Install or upgrade needed dependencies
+# -----------------------------------------------------------------------------
+if ! pip list --outdated | grep -q "^pip "; then
+  echo "Upgrading pip..."
+  pip install --upgrade pip
 fi
 
-if ! "$PYTHON" -c "import OCP" &> /dev/null; then
-  echo "OCP module not found. Installing OCP dependency..."
-  pip install OCP || { echo "Failed to install OCP. Exiting."; exit 1; }
+if ! python -c "import cadquery" &> /dev/null; then
+  echo "CadQuery not found. Installing..."
+  pip install cadquery || {
+    echo "Failed to install CadQuery. Exiting."
+    exit 1
+  }
 fi
 
-# Define terminal colors
+if ! python -c "import OCP" &> /dev/null; then
+  echo "OCP not found. Installing..."
+  pip install OCP || {
+    echo "Failed to install OCP. Exiting."
+    exit 1
+  }
+fi
+
+# -----------------------------------------------------------------------------
+# 4. Default parameters, usage, and argument parsing
+# -----------------------------------------------------------------------------
 readonly RED=$(tput setaf 1)
 readonly GREEN=$(tput setaf 2)
 readonly YELLOW=$(tput setaf 3)
 readonly RESET=$(tput sgr0)
 
-# Define default values
-readonly DEFAULT_ITERATIONS=4
-readonly DEFAULT_LAYER_HEIGHT=0.2
-readonly DEFAULT_NOZZLE_DIAMETER=0.4
+readonly DEFAULT_ITERATIONS=6
+readonly DEFAULT_LAYER_HEIGHT=0.15
+readonly DEFAULT_NOZZLE_DIAMETER=0.25
 readonly DEFAULT_MODEL_HEIGHT=200.0
 
 usage() {
@@ -60,17 +87,16 @@ help_message() {
   usage
   echo "Options:"
   echo "  -h, --help               show this help message and exit"
-  echo "  -i, --iterations         set the number of iterations (default: $DEFAULT_ITERATIONS)"
-  echo "  -l, --layer-height       set the layer height in mm (default: $DEFAULT_LAYER_HEIGHT)"
-  echo "  -n, --nozzle-diameter    set the nozzle diameter in mm (default: $DEFAULT_NOZZLE_DIAMETER)"
-  echo "  -m, --model-height       set the model height in mm (default: $DEFAULT_MODEL_HEIGHT)"
-  echo "      --no-prompt          run without user prompts, using provided values or defaults"
+  echo "  -i, --iterations         number of fractal iterations (default: $DEFAULT_ITERATIONS)"
+  echo "  -l, --layer-height       layer height in mm (default: $DEFAULT_LAYER_HEIGHT)"
+  echo "  -n, --nozzle-diameter    nozzle diameter in mm (default: $DEFAULT_NOZZLE_DIAMETER)"
+  echo "  -m, --model-height       desired model height in mm (default: $DEFAULT_MODEL_HEIGHT)"
+  echo "      --no-prompt          run without interactive prompts"
   exit 0
 }
 
 no_prompt=false
 
-# Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     -h|--help)
@@ -104,96 +130,53 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-# Set default values if not provided
 iterations=${iterations:-$DEFAULT_ITERATIONS}
 layer_height=${layer_height:-$DEFAULT_LAYER_HEIGHT}
 nozzle_diameter=${nozzle_diameter:-$DEFAULT_NOZZLE_DIAMETER}
 model_height=${model_height:-$DEFAULT_MODEL_HEIGHT}
 
+# If not no_prompt, prompt the user for overrides
 get_parameters() {
-  if ! $no_prompt; then
-    read -rp "Enter the number of iterations (default: ${iterations}): " user_iterations
-    read -rp "Enter the layer height in mm (default: ${layer_height}): " user_layer_height
-    read -rp "Enter the nozzle diameter in mm (default: ${nozzle_diameter}): " user_nozzle_diameter
-    read -rp "Enter the model height in mm (default: ${model_height}): " user_model_height
+  read -rp "Enter the number of iterations (default: $iterations): " user_iterations
+  read -rp "Enter the layer height in mm (default: $layer_height): " user_layer_height
+  read -rp "Enter the nozzle diameter in mm (default: $nozzle_diameter): " user_nozzle_diameter
+  read -rp "Enter the model height in mm (default: $model_height): " user_model_height
 
-    [[ -n "$user_iterations" ]] && iterations="$user_iterations"
-    [[ -n "$user_layer_height" ]] && layer_height="$user_layer_height"
-    [[ -n "$user_nozzle_diameter" ]] && nozzle_diameter="$user_nozzle_diameter"
-    [[ -n "$user_model_height" ]] && model_height="$user_model_height"
-  fi
-
-  echo "${RED}***********${RESET}"
-  echo "${RED}Parameters${RESET}"
-  echo "${RED}***********${RESET}"
-  echo "${YELLOW}Iterations:${RESET} ${iterations}"
-  echo "${YELLOW}Layer height:${RESET} ${layer_height} mm"
-  echo "${YELLOW}Nozzle diameter:${RESET} ${nozzle_diameter} mm"
-  echo "${YELLOW}Model height:${RESET} ${model_height} mm"
-}
-
-# Compute the size multiplier (used by the Python script)
-compute_size_multiplier() {
-  local height_factor=0.7071
-  local two_power_iterations=$((2**iterations))
-  size_multiplier=$(echo "scale=6; ($model_height - 0.5) / (($two_power_iterations * ($nozzle_diameter * 4) * $height_factor * 2))" | bc -l)
-}
-
-confirm() {
-  while true; do
-    local gap_size=0.01
-    local height_factor=0.7071
-    local rib_width
-    rib_width=$(echo "$nozzle_diameter * 2" | bc -l)
-
-    compute_size_multiplier
-
-    local two_power_iterations=$((2**iterations))
-    local edge_size
-    edge_size=$(echo "$nozzle_diameter * 4 * $size_multiplier" | bc -l)
-    local full_size
-    full_size=$(echo "$two_power_iterations * $edge_size" | bc -l)
-
-    echo "${YELLOW}Gap size:${RESET} ${gap_size} mm"
-    echo "${YELLOW}Edge size:${RESET} ${edge_size} mm"
-    echo "${YELLOW}Rib width:${RESET} ${rib_width} mm"
-    echo "${YELLOW}Height factor:${RESET} ${height_factor}"
-    echo "${YELLOW}Full size:${RESET} ${full_size} mm"
-    echo "${YELLOW}Size multiplier:${RESET} ${size_multiplier}"
-    echo "$PYTHON \"$DIR/octahedroflake.py\" --iterations ${iterations} --layer-height ${layer_height} --nozzle-diameter ${nozzle_diameter} --size-multiplier ${size_multiplier}"
-
-    read -rp "${YELLOW}Do you want to continue? [Y/n]${RESET} " response
-    case "$response" in
-      [yY]|"")
-        break
-        ;;
-      [nN])
-        get_parameters
-        ;;
-      *)
-        echo "Invalid response. Please enter 'y' or 'n'."
-        ;;
-    esac
-  done
+  [[ -n "$user_iterations" ]] && iterations="$user_iterations"
+  [[ -n "$user_layer_height" ]] && layer_height="$user_layer_height"
+  [[ -n "$user_nozzle_diameter" ]] && nozzle_diameter="$user_nozzle_diameter"
+  [[ -n "$user_model_height" ]] && model_height="$user_model_height"
 }
 
 main() {
-  get_parameters
-  if $no_prompt; then
-    compute_size_multiplier
-  else
-    confirm
+  if ! $no_prompt; then
+    get_parameters
   fi
 
+  echo
+  echo "${RED}***********${RESET}"
+  echo "${RED}Parameters${RESET}"
+  echo "${RED}***********${RESET}"
+  echo "${YELLOW}Python path:${RESET}       $(command -v python)"
+  echo "${YELLOW}Iterations:${RESET}        ${iterations}"
+  echo "${YELLOW}Layer height:${RESET}      ${layer_height} mm"
+  echo "${YELLOW}Nozzle diameter:${RESET}    ${nozzle_diameter} mm"
+  echo "${YELLOW}Model height:${RESET}       ${model_height} mm"
+
+  echo
   echo "${GREEN}Running the Python script...${RESET}"
-  "$PYTHON" "$DIR/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
+  python "$DIR/octahedroflake.py" \
+    --iterations "$iterations" \
+    --layer-height "$layer_height" \
+    --nozzle-diameter "$nozzle_diameter" \
+    --desired_height "$model_height"
+
   echo "${GREEN}Done.${RESET}"
 }
 
-# Execute main routine
 main
 
 echo "Files are in ${DIR}/output"
-if command -v open >/dev/null 2>&1; then
+if command -v open &> /dev/null; then
   open "${DIR}/output"
 fi

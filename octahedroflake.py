@@ -15,12 +15,12 @@ Usage:
     python octahedroflake.py [options]
 
 Options:
-    -h, --help              Show this help message and exit.
-    -i, --iterations        Number of iterations (default: 4).
-    -l, --layer-height      Layer height in mm (default: 0.2).
-    -n, --nozzle-diameter   Nozzle diameter in mm (default: 0.4).
-    --size-multiplier       Size multiplier (default: 0.9765625).
-    --branded               Include branding in the model.
+    -h, --help                Show this help message and exit.
+    -i, --iterations          Number of iterations (default: 4).
+    -l, --layer-height        Layer height in mm (default: 0.2).
+    -n, --nozzle-diameter     Nozzle diameter in mm (default: 0.4).
+    --desired_height_default  The Desired height of the model (default: 200).
+    --branded                 Include branding in the model.
 """
 
 import os
@@ -39,34 +39,17 @@ from cadquery import exporters
 # Parameter Setup: Either from interactive form cell or command-line arguments
 # -----------------------------------------------------------------------------
 
-# If running in Colab with an interactive cell above, these may already be defined.
-# Otherwise, use the following defaults.
-try:
-    iterations_default
-except NameError:
-    iterations_default = 4
-try:
-    layer_height_default
-except NameError:
-    layer_height_default = 0.2
-try:
-    nozzle_diameter_default
-except NameError:
-    nozzle_diameter_default = 0.4
-try:
-    size_multiplier_default
-except NameError:
-    size_multiplier_default = 0.9765625
-try:
-    branded
-except NameError:
-    branded = False
+iterations_default = 4
+layer_height_default = 0.2
+nozzle_diameter_default = 0.4
+desired_height_default = 200
+branded = False
 
 parser = argparse.ArgumentParser(description='octahedroflake')
 parser.add_argument('-i', '--iterations', type=int, default=iterations_default, help='number of iterations')
 parser.add_argument('-l', '--layer-height', type=float, default=layer_height_default, help='layer height in mm')
 parser.add_argument('-n', '--nozzle-diameter', type=float, default=nozzle_diameter_default, help='nozzle diameter in mm')
-parser.add_argument('--size-multiplier', type=float, default=size_multiplier_default, help='size multiplier')
+parser.add_argument('--desired_height', type=float, default=desired_height_default, help='desired height')
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--branded', dest='branded', action='store_true', help='Include branding in the model (default)')
@@ -76,30 +59,32 @@ parser.set_defaults(branded=branded)
 # Use parse_known_args to ignore extra args (e.g. Colab's -f flag)
 args, unknown = parser.parse_known_args()
 
+BRANDED = args.branded
 NOZZLE_DIAMETER = args.nozzle_diameter
 LAYER_HEIGHT = args.layer_height
 FINAL_ORDER = args.iterations
-SIZE_MULTIPLIER = args.size_multiplier
+HEIGHT_FACTOR = 0.7071  # see: https://www.calculatorsoup.com/calculators/geometry-solids/pyramid.php
 
 # -----------------------------------------------------------------------------
-# Global Parameters
+# Compute EDGE_SIZE directly from desired height
 # -----------------------------------------------------------------------------
-
-part_cache = {}
+EDGE_SIZE = args.desired_height / ((2**FINAL_ORDER) * (NOZZLE_DIAMETER * 4) * HEIGHT_FACTOR * 2)
 
 GAP_SIZE = 0.01
-EDGE_SIZE = NOZZLE_DIAMETER * 4 * SIZE_MULTIPLIER
 RIB_WIDTH = NOZZLE_DIAMETER * 2
 USE_DISK_CACHE = True
-HEIGHT_FACTOR = 0.7071  # see: https://www.calculatorsoup.com/calculators/geometry-solids/pyramid.php
+
 FULL_SIZE = pow(2, FINAL_ORDER) * EDGE_SIZE
 FULL_HEIGHT = math.ceil(FULL_SIZE * HEIGHT_FACTOR * 2)
 PYRAMID_HEIGHT = round(EDGE_SIZE * HEIGHT_FACTOR, 2)
 COMBINED_HEIGHT = PYRAMID_HEIGHT + LAYER_HEIGHT
 GAP_HEIGHT = LAYER_HEIGHT + GAP_SIZE * HEIGHT_FACTOR
+
 PART_CACHE_STEP_DIR = 'part_cache'
 PART_CACHE_STL_DIR = 'parts_stl'
 OUTPUT_DIR = 'output'
+
+part_cache = {}
 
 # -----------------------------------------------------------------------------
 # Utility Functions
@@ -136,7 +121,8 @@ def balanced_union(shapes):
 
 def name_for_cache(part_name, order=None):
     # Include key parameters that influence the model
-    params = f"{NOZZLE_DIAMETER:.2f}-{LAYER_HEIGHT:.2f}-{SIZE_MULTIPLIER:.5f}-{GAP_SIZE:.2f}-{HEIGHT_FACTOR:.4f}"
+    # (removed SIZE_MULTIPLIER and replaced with EDGE_SIZE)
+    params = f"{NOZZLE_DIAMETER:.2f}-{LAYER_HEIGHT:.2f}-{EDGE_SIZE:.5f}-{GAP_SIZE:.2f}-{HEIGHT_FACTOR:.4f}"
     if order is not None:
         params += f"-order{order}"
     key = f"{params}-{part_name}"
@@ -286,43 +272,45 @@ def make_fractal_pyramid(order):
     if order == 0:
         return make_single_pyramid(0)
 
-    # Compute the lower order fractal
-    lower_result = make_fractal_pyramid(order=order - 1)
-
     factor = 2**(order - 1)
     shift = EDGE_SIZE / 2 * factor
     height = (COMBINED_HEIGHT + LAYER_HEIGHT) * factor
     layer_height_2 = LAYER_HEIGHT * 2
     z_shift = layer_height_2 - height
-    report('👯 make clones', order=order)
-    mirror = lower_result.mirror(mirrorPlane='XY').translate((0, 0, LAYER_HEIGHT))
+
+    report('🥪 stack up the fractal', order=order)
+    report('🥪 1/5 lower order fractal', order=order)
+    # Compute the lower order fractal
+    lower_result = make_fractal_pyramid(order=order - 1)
+
+    # Group the parts into two balanced unions
+    report('🥪 2/5 mirrored fractal', order=order)
+    mirror = make_mirror_pyramid(order=order - 1)
+    group_a = balanced_union([lower_result, mirror]).translate((0, 0, (factor - 1) * -layer_height_2))
+
+    report('🥪 3/5 group_b - four corners', order=order)
     south = lower_result.translate((-shift, shift, z_shift))
     north = lower_result.translate((shift, -shift, z_shift))
     east = lower_result.translate((shift, shift, z_shift))
     west = lower_result.translate((-shift, -shift, z_shift))
-    new_ribs = make_ribs(order=order)
-    new_gaps = make_gaps(order=order)
-    save_caches_to_disk()
-    report('🥪 made parts, now union the fractal', order=order)
-
-    # Group the parts into two balanced unions
-    group_a = balanced_union([lower_result, mirror]).translate((0, 0, (factor - 1) * -layer_height_2))
     group_b = balanced_union([south, north, east, west])
 
     # Combine both groups and apply the final translation
+    report('🥪 4/5 group_a + group_b', order=order)
     combined = balanced_union([group_a, group_b]).translate((0, 0, height - layer_height_2))
 
-    # Apply the final boolean operations
+    report('🥪 5/5 Gaps and Ribs', order=order)
+    new_gaps = make_gaps(order=order)
+    new_ribs = make_ribs(order=order)
     final_result = combined.cut(new_gaps).union(new_ribs)
 
     save_caches_to_disk()
     return final_result
 
-
 @cache_model_decorator
-def make_final_mirror():
-    report('🪩 make final mirror', order=FINAL_ORDER)
-    pyramid_fractal = make_fractal_pyramid(order=FINAL_ORDER)
+def make_mirror_pyramid(order):
+    report('🪩 make mirror', order=order)
+    pyramid_fractal = make_fractal_pyramid(order)
     return pyramid_fractal.mirror(mirrorPlane='XY').translate((0, 0, LAYER_HEIGHT))
 
 @cache_model_decorator
@@ -339,7 +327,11 @@ def make_stand(order):
     new_ribs = make_ribs(order=order + 1)
     base_size = EDGE_SIZE * (2**(order + 1))
     solid_base = cq.Workplane('XY').rect(base_size, base_size).extrude(0.2)
-    return south.union(north).union(east).union(west).cut(new_gaps).union(new_ribs).union(solid_base)
+
+    combined_stand = balanced_union([south, north, east, west])
+    full_structure = balanced_union([combined_stand, new_ribs, solid_base])
+    final_stand = full_structure.cut(new_gaps)
+    return final_stand
 
 def export_pyramid(pyramid):
     base_size = EDGE_SIZE * (2**FINAL_ORDER)
@@ -356,19 +348,33 @@ def make_branded_pyramid():
 
 @cache_model_decorator
 def make_unbranded_pyramid():
-    report('👷🏻‍♀️ About to make an unbranded pyramid', order=FINAL_ORDER)
+    report('👷🏻‍♀️ Making an unbranded pyramid', order=FINAL_ORDER)
     fractal_pyramid = make_fractal_pyramid(order=FINAL_ORDER)
     return fractal_pyramid
 
 @cache_model_decorator
-def make_octahedron_fractal(branded):
+def make_octahedron_fractal():
     report('💠 make it!', order=FINAL_ORDER)
-    pyramid = make_branded_pyramid() if branded else make_unbranded_pyramid()
+    pyramid = make_branded_pyramid() if BRANDED else make_unbranded_pyramid()
     export_pyramid(pyramid)
-    mirrored = make_final_mirror()
+    mirrored = make_mirror_pyramid(order=FINAL_ORDER)
+    save_caches_to_disk()
+    report('🔗 combine with mirrored', order=FINAL_ORDER)
+
+    combined_model = balanced_union([pyramid, mirrored])
+
+    return combined_model
+
+@cache_model_decorator
+def make_octahedron_fractal_with_stand():
+    combined_model = make_octahedron_fractal()
+    save_caches_to_disk()
+    combined_model = combined_model.translate((0, 0, PYRAMID_HEIGHT * (2**FINAL_ORDER)))
+
+    report('🔗 combine with stand', order=FINAL_ORDER)
     stand = make_stand(max(0, FINAL_ORDER - 2))
-    report('🔗 combine with mirrored and stand', order=FINAL_ORDER)
-    return pyramid.union(mirrored).translate((0, 0, PYRAMID_HEIGHT * (2**FINAL_ORDER))).union(stand)
+    combined_model = combined_model.union(stand)
+    return combined_model
 
 def run():
     start_time = timeit.default_timer()
@@ -376,7 +382,7 @@ def run():
     report(f'full_size: {FULL_SIZE}')
     report(f'full height: {FULL_HEIGHT}')
     report(f'edge size: {EDGE_SIZE}')
-    flake = make_octahedron_fractal(branded=args.branded)
+    flake = make_octahedron_fractal_with_stand()
     save_caches_to_disk()
     name = f'Octahedroflake-{FINAL_ORDER}_{FULL_HEIGHT}mm_for_{round(LAYER_HEIGHT,2)}mm_layer_height_and_{round(NOZZLE_DIAMETER,2)}mm_nozzle'
     directory = f'{OUTPUT_DIR}/{round(NOZZLE_DIAMETER,2)}mm_nozzle/{round(LAYER_HEIGHT,2)}mm_layer_height/'
@@ -390,4 +396,5 @@ def run():
     else:
         report(f"Elapsed time: {round(seconds_elapsed/3600,2)} hours")
 
-run()
+if __name__ == "__main__":
+    run()
