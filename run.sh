@@ -1,27 +1,84 @@
 #!/bin/bash
 
-# Get the absolute path of the current script
+# -----------------------------------------------------------------------------
+# 1. Enforce Python 3.11
+#    - If default python != 3.11, attempt to switch to python3.11
+#    - If python3.11 is not found, exit
+# -----------------------------------------------------------------------------
+REQUIRED_PYTHON_MINOR="3.11"
+
+PYTHON="python3"
+CURRENT_VERSION=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+
+if [[ "$CURRENT_VERSION" != "$REQUIRED_PYTHON_MINOR" ]]; then
+  echo "Default python is version $CURRENT_VERSION; we need $REQUIRED_PYTHON_MINOR."
+  if command -v python3.11 &>/dev/null; then
+    PYTHON="python3.11"
+    echo "Using $(command -v python3.11) instead."
+  else
+    echo "Error: python3.11 is not installed or not on PATH. Please install Python 3.11."
+    exit 1
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 2. Recreate and activate the virtual environment
+# -----------------------------------------------------------------------------
 SCRIPT="$(realpath "$0")"
-
-# Get the directory name of the script
 DIR="$(dirname "$SCRIPT")"
-
-# Change the current working directory to the script directory
 cd "$DIR"
 
-# Define constants
+if [ ! -d "venv" ]; then
+  echo "Creating virtual environment..."
+  "$PYTHON" -m venv venv || {
+    echo "Failed to create virtual environment with $PYTHON. Exiting."
+    exit 1
+  }
+else
+  echo "Using existing virtual environment..."
+fi
+
+echo "Activating virtual environment..."
+# shellcheck disable=SC1091
+source venv/bin/activate
+
+# -----------------------------------------------------------------------------
+# 3. Install or upgrade needed dependencies
+# -----------------------------------------------------------------------------
+if ! pip list --outdated | grep -q "^pip "; then
+  echo "Upgrading pip..."
+  pip install --upgrade pip
+fi
+
+if ! python -c "import cadquery" &> /dev/null; then
+  echo "CadQuery not found. Installing..."
+  pip install cadquery || {
+    echo "Failed to install CadQuery. Exiting."
+    exit 1
+  }
+fi
+
+if ! python -c "import OCP" &> /dev/null; then
+  echo "OCP not found. Installing..."
+  pip install OCP || {
+    echo "Failed to install OCP. Exiting."
+    exit 1
+  }
+fi
+
+# -----------------------------------------------------------------------------
+# 4. Default parameters, usage, and argument parsing
+# -----------------------------------------------------------------------------
 readonly RED=$(tput setaf 1)
 readonly GREEN=$(tput setaf 2)
 readonly YELLOW=$(tput setaf 3)
 readonly RESET=$(tput sgr0)
 
-# Define default values
 readonly DEFAULT_ITERATIONS=4
 readonly DEFAULT_LAYER_HEIGHT=0.2
 readonly DEFAULT_NOZZLE_DIAMETER=0.4
 readonly DEFAULT_MODEL_HEIGHT=200.0
 
-# Define usage and help message
 usage() {
   echo "Usage: $(basename "$0") [-h] [-i iterations] [-l layer_height] [-n nozzle_diameter] [-m model_height] [--no-prompt]"
 }
@@ -30,141 +87,96 @@ help_message() {
   usage
   echo "Options:"
   echo "  -h, --help               show this help message and exit"
-  echo "  -i, --iterations         set the number of iterations (default: $DEFAULT_ITERATIONS)"
-  echo "  -l, --layer-height       set the layer height in mm (default: $DEFAULT_LAYER_HEIGHT)"
-  echo "  -n, --nozzle-diameter    set the nozzle diameter in mm (default: $DEFAULT_NOZZLE_DIAMETER)"
-  echo "  -m, --model-height       set the model height in mm (default: $DEFAULT_MODEL_HEIGHT)"
-  echo "      --no-prompt          run without user prompts, using provided values or defaults"
+  echo "  -i, --iterations         number of fractal iterations (default: $DEFAULT_ITERATIONS)"
+  echo "  -l, --layer-height       layer height in mm (default: $DEFAULT_LAYER_HEIGHT)"
+  echo "  -n, --nozzle-diameter    nozzle diameter in mm (default: $DEFAULT_NOZZLE_DIAMETER)"
+  echo "  -m, --model-height       desired model height in mm (default: $DEFAULT_MODEL_HEIGHT)"
+  echo "      --no-prompt          run without interactive prompts"
   exit 0
 }
 
 no_prompt=false
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
+while [[ "$#" -gt 0 ]]; do
   case "$1" in
-  -h | --help)
-    help_message
-    ;;
-  -i | --iterations)
-    iterations="$2"
-    shift
-    ;;
-  -l | --layer-height)
-    layer_height="$2"
-    shift
-    ;;
-  -n | --nozzle-diameter)
-    nozzle_diameter="$2"
-    shift
-    ;;
-  -m | --model-height)
-    model_height="$2"
-    shift
-    ;;
-  --no-prompt)
-    no_prompt=true
-    ;;
-  *)
-    echo "Invalid option: $1"
-    usage
-    exit 1
-    ;;
+    -h|--help)
+      help_message
+      ;;
+    -i|--iterations)
+      iterations="$2"
+      shift
+      ;;
+    -l|--layer-height)
+      layer_height="$2"
+      shift
+      ;;
+    -n|--nozzle-diameter)
+      nozzle_diameter="$2"
+      shift
+      ;;
+    -m|--model-height)
+      model_height="$2"
+      shift
+      ;;
+    --no-prompt)
+      no_prompt=true
+      ;;
+    *)
+      echo "Invalid option: $1"
+      usage
+      exit 1
+      ;;
   esac
   shift
 done
 
-# Set default values if no values provided
 iterations=${iterations:-$DEFAULT_ITERATIONS}
 layer_height=${layer_height:-$DEFAULT_LAYER_HEIGHT}
 nozzle_diameter=${nozzle_diameter:-$DEFAULT_NOZZLE_DIAMETER}
 model_height=${model_height:-$DEFAULT_MODEL_HEIGHT}
 
+# If not no_prompt, prompt the user for overrides
 get_parameters() {
-  if ! $no_prompt; then
-    read -rp "Enter the number of iterations (default: $iterations): " user_iterations
-    read -rp "Enter the layer height in mm (default: $layer_height): " user_layer_height
-    read -rp "Enter the nozzle diameter in mm (default: $nozzle_diameter): " user_nozzle_diameter
-    read -rp "Enter the model height in mm (default: $model_height): " user_model_height
+  read -rp "Enter the number of iterations (default: $iterations): " user_iterations
+  read -rp "Enter the layer height in mm (default: $layer_height): " user_layer_height
+  read -rp "Enter the nozzle diameter in mm (default: $nozzle_diameter): " user_nozzle_diameter
+  read -rp "Enter the model height in mm (default: $model_height): " user_model_height
 
-    [[ -n "$user_iterations" ]] && iterations=$user_iterations
-    [[ -n "$user_layer_height" ]] && layer_height=$user_layer_height
-    [[ -n "$user_nozzle_diameter" ]] && nozzle_diameter=$user_nozzle_diameter
-    [[ -n "$user_model_height" ]] && model_height=$user_model_height
+  [[ -n "$user_iterations" ]] && iterations="$user_iterations"
+  [[ -n "$user_layer_height" ]] && layer_height="$user_layer_height"
+  [[ -n "$user_nozzle_diameter" ]] && nozzle_diameter="$user_nozzle_diameter"
+  [[ -n "$user_model_height" ]] && model_height="$user_model_height"
+}
+
+main() {
+  if ! $no_prompt; then
+    get_parameters
   fi
 
+  echo
   echo "${RED}***********${RESET}"
   echo "${RED}Parameters${RESET}"
   echo "${RED}***********${RESET}"
-  echo "${YELLOW}Iterations:${RESET} ${iterations}"
-  echo "${YELLOW}Layer height:${RESET} ${layer_height} mm"
-  echo "${YELLOW}Nozzle diameter:${RESET} ${nozzle_diameter} mm"
-  echo "${YELLOW}Model height:${RESET} ${model_height} mm"
-}
+  echo "${YELLOW}Python path:${RESET}       $(command -v python)"
+  echo "${YELLOW}Iterations:${RESET}        ${iterations}"
+  echo "${YELLOW}Layer height:${RESET}      ${layer_height} mm"
+  echo "${YELLOW}Nozzle diameter:${RESET}    ${nozzle_diameter} mm"
+  echo "${YELLOW}Model height:${RESET}       ${model_height} mm"
 
-confirm() {
-  if $no_prompt; then
-    return 0
-  else
-    while true; do
-      local gap_size=0.01
-      local height_factor=0.7071
-      local rib_width=$(echo "$nozzle_diameter * 2" | bc -l)
-
-      size_multiplier=$(echo "scale=6; ($model_height - 0.5) / ((2^$iterations * ($nozzle_diameter * 4) * $height_factor * 2))" | bc)
-
-      local edge_size=$(echo "$nozzle_diameter * 4 * $size_multiplier" | bc -l)
-      local full_size=$(echo "2 ^ $iterations * $edge_size" | bc -l)
-
-      echo "${YELLOW}Gap size:${RESET} ${gap_size} mm"
-      echo "${YELLOW}Edge size:${RESET} ${edge_size} mm"
-      echo "${YELLOW}Rib width:${RESET} ${rib_width} mm"
-      echo "${YELLOW}Height factor:${RESET} ${height_factor}"
-      echo "${YELLOW}Full size:${RESET} ${full_size} mm"
-      echo "${YELLOW}Size multiplier:${RESET} ${size_multiplier}"
-      echo "python3 $(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
-
-      read -rp "${YELLOW}Do you want to continue? [Y/n]${RESET} " response
-      case "$response" in
-      [yY] | "")
-        return 0
-        ;;
-      [nN])
-        get_parameters
-        ;;
-      *)
-        echo "Invalid response. Please enter 'y', 'n', or press the return key."
-        ;;
-      esac
-    done
-  fi
-}
-
-# Main function
-main() {
-  get_parameters
-  confirm
-
+  echo
   echo "${GREEN}Running the Python script...${RESET}"
-  python3 "$(dirname "$0")/octahedroflake.py" --iterations "$iterations" --layer-height "$layer_height" --nozzle-diameter "$nozzle_diameter" --size-multiplier "$size_multiplier"
+  python "$DIR/octahedroflake.py" \
+    --iterations "$iterations" \
+    --layer-height "$layer_height" \
+    --nozzle-diameter "$nozzle_diameter" \
+    --desired_height "$model_height"
+
   echo "${GREEN}Done.${RESET}"
 }
 
-# Call the main function
 main
 
-if ! $no_prompt; then
-  # Ask if the user wants to run the script again
-  read -n 1 -r -p "${YELLOW}Press 'r' to run again, or any other key to exit...${RESET}" response
-  if [[ "$response" =~ ^[rR]$ ]]; then
-    echo -e "\nRunning script again..."
-    exec "$0" "$@"
-  else
-    echo -e "\nExiting..."
-  fi
-fi
-
-echo "files are in /output"
-if command -v open >/dev/null 2>&1; then
-  open "$DIR/output"
+echo "Files are in ${DIR}/output"
+if command -v open &> /dev/null; then
+  open "${DIR}/output"
 fi
