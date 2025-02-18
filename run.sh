@@ -74,9 +74,9 @@ readonly GREEN=$(tput setaf 2)
 readonly YELLOW=$(tput setaf 3)
 readonly RESET=$(tput sgr0)
 
-readonly DEFAULT_ITERATIONS=6
-readonly DEFAULT_LAYER_HEIGHT=0.15
-readonly DEFAULT_NOZZLE_DIAMETER=0.25
+readonly DEFAULT_ITERATIONS=4
+readonly DEFAULT_LAYER_HEIGHT=0.2
+readonly DEFAULT_NOZZLE_DIAMETER=0.4
 readonly DEFAULT_MODEL_HEIGHT=200.0
 
 usage() {
