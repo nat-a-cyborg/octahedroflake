@@ -56,18 +56,18 @@ group.add_argument('--branded', dest='branded', action='store_true', help='Inclu
 parser.set_defaults(branded=BRANDED_DEFAULT)
 
 # Use parse_known_args to ignore extra args (e.g. Colab's -f flag)
-args, unknown = parser.parse_known_args()
+local_args, unknown = parser.parse_known_args()
 
-BRANDED = args.branded
-NOZZLE_DIAMETER = args.nozzle_diameter
-LAYER_HEIGHT = args.layer_height
-FINAL_ORDER = args.iterations
+BRANDED = local_args.branded
+NOZZLE_DIAMETER = local_args.nozzle_diameter
+LAYER_HEIGHT = local_args.layer_height
+FINAL_ORDER = local_args.iterations
 HEIGHT_FACTOR = 0.7071  # see: https://www.calculatorsoup.com/calculators/geometry-solids/pyramid.php
 
 # -----------------------------------------------------------------------------
 # Compute EDGE_SIZE directly from desired height
 # -----------------------------------------------------------------------------
-EDGE_SIZE = args.desired_height / ((2**FINAL_ORDER) * (NOZZLE_DIAMETER * 4) * HEIGHT_FACTOR * 2)
+EDGE_SIZE = local_args.desired_height / ((2**FINAL_ORDER) * (NOZZLE_DIAMETER * 4) * HEIGHT_FACTOR * 2)
 
 GAP_SIZE = 0.01
 RIB_WIDTH = NOZZLE_DIAMETER * 2
