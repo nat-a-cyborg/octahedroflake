@@ -14,6 +14,7 @@ Before submitting changes, run `python3.11 -m unittest discover -s tests`, `pyth
 
 ## Working Style
 Work directly on the `develop` branch unless the maintainer explicitly asks for a separate branch. Use plain `git` commands for commits and pushes; do not introduce a PR-based workflow or `gh`-specific steps unless the maintainer asks for them. Keep commit titles imperative, focused, and under roughly 72 characters.
+Use `Nat Johnson <nat@a-cyborg.com>` as the git author and committer identity for commits in this repository.
 
 ## Natural Language Generation Requests
 Treat simple requests like “make a model 480 high at order 3” as a request to run the generator, not just explain the command. Translate that example to `./run.sh --no-prompt -i 3 -m 480` and use the repo defaults for any unspecified print settings:
