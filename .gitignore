@@ -1,2 +1,7 @@
-output
-part_cache
+output/
+part_cache/
+parts_stl/
+venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/

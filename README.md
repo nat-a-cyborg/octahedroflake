@@ -1,110 +1,106 @@
-# Octahedroflake: A 3D Fractal Sculpture Inspired by the Sierpinski Triangle
+# Octahedroflake
 
-This repository contains the CadQuery code and an accompanying Bash script to generate a 3D octahedron fractal called the "Octahedroflake." The Octahedroflake is a higher-dimensional analog of the Sierpinski Triangle.
+CadQuery generator for a printable 3D octahedron fractal inspired by the Sierpinski triangle.
 
 [![Social Preview](https://repository-images.githubusercontent.com/626647438/cb055930-87fd-490b-80b1-48fa105da8bc)](https://www.printables.com/model/432767)
 
-## Table of Contents
+## What is here
 
-- [Pre-generated Models](#pre-generated-models)
-- [Prerequisites](#prerequisites)
-- [Usage](#usage)
-- [File Descriptions](#file-descriptions)
-- [Restrictions on Selling the Model](#restrictions-on-selling-the-model)
-- [Feedback and Contributions](#feedback-and-contributions)
-- [License](#license)
-
-## Pre-generated Models
-
-Download pre-generated Octahedroflake models using the following link:
-
-[Pre-generated Octahedroflake Models](https://www.printables.com/model/432767)
-
-This link also provides slicing and printing instructions, as well as photos of printed models created by users.
+- `octahedroflake.py` builds the CadQuery model, handles CLI arguments, manages part caching, and exports STL/STEP files.
+- `run.sh` is the main local entrypoint. It selects Python 3.11, bootstraps `venv/`, installs dependencies, and runs the generator.
+- `requirements.txt` and `requirements-dev.txt` declare runtime and development dependencies.
+- `logo_stamp.step` is imported when `--branded` output is requested.
+- `octahedroflake.ipynb` is an exploratory notebook version of the generator.
+- `tests/` covers CLI parsing and non-CAD runtime helpers.
+- Generated files are written under `output/`, and cached STEP fragments live under `part_cache/`.
 
 ## Prerequisites
 
-To utilize this repository, ensure you have CadQuery 2.0 or a later version installed on your system. Follow the installation instructions from the official CadQuery documentation:
+- Python 3.11 for the local wrapper script
+- CadQuery 2.x and its dependencies
 
-[CadQuery Installation Instructions](https://cadquery.readthedocs.io/en/latest/installation.html)
+The simplest local workflow is to let `run.sh` create the virtual environment and install what it needs.
 
 ## Usage
 
-Generate an Octahedroflake by running the \`run.sh\` script in your terminal:
+Interactive mode:
 
-```
+```bash
 ./run.sh
 ```
 
-You can also customize the parameters of the generated fractal using optional command-line arguments. For example:
+Repeatable non-interactive run:
 
-```
-./run.sh -i 4 -l 0.2 -n 0.4 -m 150
-```
-
-To view a full list of command-line options, run:
-
-```
-./run.sh -h
+```bash
+./run.sh --no-prompt -i 4 -l 0.2 -n 0.4 -m 200
 ```
 
-### Running directly
+Direct Python entrypoint:
 
+```bash
+python3.11 octahedroflake.py --iterations 4 --layer-height 0.2 --nozzle-diameter 0.4 --desired_height 200
 ```
-python3 /home/octahedroflake.py --iterations 6 --layer-height 0.2 --nozzle-diameter 0.4 --size-multiplier 1.377628
+
+Show CLI help:
+
+```bash
+./run.sh --help
+python3.11 octahedroflake.py --help
 ```
 
-## File Descriptions
+Outputs are written to:
 
-### [octahedroflake.py](https://github.com/nat-a-cyborg/octahedroflake/blob/main/octahedroflake.py)
+```text
+output/<nozzle>mm_nozzle/<layer_height>mm_layer_height/
+```
 
-This Python script generates the Octahedroflake using CadQuery. It defines the parameters and functions necessary to create the fractal and exports the result as an STL file.
+## Development
 
-### [run.sh](https://github.com/nat-a-cyborg/octahedroflake/blob/main/run.sh)
+Format the generator:
 
-This Bash script streamlines running the \`octahedroflake.py\` script by offering a user-friendly interface. Specify various parameters, such as the number of iterations, layer height, nozzle diameter, and model height, through command-line arguments or interactive prompts. The script also provides a summary of the resulting model's dimensions and other characteristics.
+```bash
+yapf -i octahedroflake.py
+```
 
-## Restrictions on Selling the Model
+Lint the generator:
 
-The Octahedroflake model is for personal use only. Please refrain from selling this model or claiming it as your own work.
+```bash
+python3.11 -m pip install -r requirements-dev.txt
+python3.11 -m pylint octahedroflake.py
+```
 
-## Feedback and Contributions
+Run the lightweight test suite:
 
-As my first CadQuery project, I welcome any input or feedback. Please feel free to open an issue or submit a pull request if you have suggestions for improvements.
+```bash
+python3.11 -m unittest discover -s tests
+```
+
+Recommended manual validation:
+
+```bash
+./run.sh --no-prompt -i 4 -l 0.2 -n 0.4 -m 200
+```
 
 ## Docker
 
-### BUILD
+Build the image:
 
-```
+```bash
 docker build -t octahedroflake .
 ```
 
-```
-docker build -t octahedroflake https://github.com/nat-a-cyborg/octahedroflake.git
+Run the generator with the repo `output/` directory mounted:
+
+```bash
+docker run -it -v "$(pwd)/output:/home/output" octahedroflake
 ```
 
-### PULL
+## Pre-generated models
 
-```
-docker pull natacyborg/octahedroflake
-```
-
-### RUN
-
-```
-docker run -v $(pwd)/output:/home/output -it octahedroflake
-```
+Pre-generated files, printing guidance, and photos are available on [Printables](https://www.printables.com/model/432767).
 
 ## License
 
-Shield: [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
-
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
-
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
+[![CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
