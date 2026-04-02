@@ -1,17 +1,33 @@
 """Unit tests for CLI parsing and lightweight generator helpers."""
 
+# pylint: disable=duplicate-code
+
 import contextlib
 import io
 import unittest
 from pathlib import Path
 
+from mesh_generator import MeshOctahedroflakeGenerator
 from octahedroflake import (
     ModelConfig,
-    OctahedroflakeGenerator,
     calculate_dimensions,
     format_elapsed_time,
     parse_arguments,
 )
+
+
+def _ignore_report(*_args, **_kwargs):
+    """Ignore progress output in tests."""
+
+
+class DummyManifoldModule:  # pylint: disable=too-few-public-methods
+    """Simple placeholder module for non-geometry tests."""
+
+    class Manifold:  # pylint: disable=too-few-public-methods
+        """Placeholder manifold type."""
+
+    class Mesh:  # pylint: disable=too-few-public-methods
+        """Placeholder mesh type."""
 
 
 class ParseArgumentsTests(unittest.TestCase):
@@ -39,32 +55,40 @@ class DimensionTests(unittest.TestCase):
         config = ModelConfig(iterations=2, layer_height=0.25, nozzle_diameter=0.6, desired_height=120)
         dimensions = calculate_dimensions(config)
 
-        expected_edge_size = 120 / ((2**2) * (0.6 * 4) * 0.7071 * 2)
+        expected_edge_size = (120 - 0.25) / ((2**2) * 0.7071 * 2)
 
         self.assertAlmostEqual(dimensions.edge_size, expected_edge_size)
         self.assertAlmostEqual(dimensions.rib_width, 1.2)
-        self.assertEqual(dimensions.full_height, 50)
+        self.assertAlmostEqual(dimensions.gap_size, 0.1)
+        self.assertEqual(dimensions.full_height, 120)
+
+    def test_nozzle_diameter_only_changes_rib_width(self):
+        first = calculate_dimensions(ModelConfig(iterations=4, nozzle_diameter=0.4, desired_height=200))
+        second = calculate_dimensions(ModelConfig(iterations=4, nozzle_diameter=0.6, desired_height=200))
+
+        self.assertAlmostEqual(first.edge_size, second.edge_size)
+        self.assertNotEqual(first.rib_width, second.rib_width)
 
 
 class GeneratorTests(unittest.TestCase):
-    """Verify generator helpers that do not require CadQuery."""
+    """Verify generator helpers that do not require manifold operations."""
 
     def test_output_directory_uses_runtime_config(self):
-        generator = OctahedroflakeGenerator(
-            ModelConfig(iterations=3, layer_height=0.25, nozzle_diameter=0.6),
+        config = ModelConfig(iterations=3, layer_height=0.25, nozzle_diameter=0.6)
+        generator = MeshOctahedroflakeGenerator(
+            config,
+            calculate_dimensions(config),
             base_dir=Path('/tmp/octahedroflake'),
+            numpy_module=object(),
+            manifold_module=DummyManifoldModule,
+            reporter=_ignore_report,
+            format_elapsed_time=str,
         )
 
         self.assertEqual(
             generator.output_directory(),
             Path('/tmp/octahedroflake/output/0.6mm_nozzle/0.25mm_layer_height'),
         )
-
-    def test_cache_key_changes_with_runtime_parameters(self):
-        first = OctahedroflakeGenerator(ModelConfig(iterations=3, nozzle_diameter=0.4))
-        second = OctahedroflakeGenerator(ModelConfig(iterations=3, nozzle_diameter=0.6))
-
-        self.assertNotEqual(first.cache_key('make_ribs', order=2), second.cache_key('make_ribs', order=2))
 
 
 class FormattingTests(unittest.TestCase):

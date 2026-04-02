@@ -132,7 +132,7 @@ ensure_venv() {
 }
 
 ensure_runtime_dependencies() {
-  if ! python -c "import cadquery" >/dev/null 2>&1; then
+  if ! python -c "import numpy, manifold3d" >/dev/null 2>&1; then
     echo "Runtime dependencies not found. Installing from $(basename "$REQUIREMENTS_FILE")..."
     python -m pip install -r "$REQUIREMENTS_FILE"
   fi
@@ -178,7 +178,6 @@ main() {
   echo "${YELLOW}Layer height:${RESET}       ${layer_height} mm"
   echo "${YELLOW}Nozzle diameter:${RESET}    ${nozzle_diameter} mm"
   echo "${YELLOW}Model height:${RESET}       ${model_height} mm"
-
   echo
   echo "${GREEN}Running the Python script...${RESET}"
   python "$SCRIPT_DIR/octahedroflake.py" \

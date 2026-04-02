@@ -1,23 +1,23 @@
 # Octahedroflake
 
-CadQuery generator for a printable 3D octahedron fractal inspired by the Sierpinski triangle.
+Direct STL generator for a printable 3D octahedron fractal inspired by the Sierpinski triangle.
 
 [![Social Preview](https://repository-images.githubusercontent.com/626647438/cb055930-87fd-490b-80b1-48fa105da8bc)](https://www.printables.com/model/432767)
 
 ## What is here
 
-- `octahedroflake.py` builds the CadQuery model, handles CLI arguments, manages part caching, and exports STL/STEP files.
+- `octahedroflake.py` handles CLI arguments, size calculations, and the mesh generator entrypoint.
+- `mesh_generator.py` builds STL output directly from triangle meshes using `manifold3d`, which keeps RAM use low even for higher orders.
 - `run.sh` is the main local entrypoint. It selects Python 3.11, bootstraps `venv/`, installs dependencies, and runs the generator.
 - `requirements.txt` and `requirements-dev.txt` declare runtime and development dependencies.
-- `logo_stamp.step` is imported when `--branded` output is requested.
 - `octahedroflake.ipynb` is an exploratory notebook version of the generator.
-- `tests/` covers CLI parsing and non-CAD runtime helpers.
-- Generated files are written under `output/`, and cached STEP fragments live under `part_cache/`.
+- `tests/` covers CLI parsing and lightweight runtime helpers.
+- Generated files are written under `output/`.
 
 ## Prerequisites
 
 - Python 3.11 for the local wrapper script
-- CadQuery 2.x and its dependencies
+- `manifold3d` for the mesh boolean engine
 
 The simplest local workflow is to let `run.sh` create the virtual environment and install what it needs.
 
@@ -48,6 +48,12 @@ Show CLI help:
 python3.11 octahedroflake.py --help
 ```
 
+Notes:
+
+- `desired_height` now controls the actual overall model height in mm.
+- `nozzle_diameter` only affects printability-driven features such as rib thickness.
+- `--branded` is not currently supported in the mesh-only generator.
+
 Outputs are written to:
 
 ```text
@@ -59,14 +65,14 @@ output/<nozzle>mm_nozzle/<layer_height>mm_layer_height/
 Format the generator:
 
 ```bash
-yapf -i octahedroflake.py
+yapf -i octahedroflake.py mesh_generator.py
 ```
 
 Lint the generator:
 
 ```bash
 python3.11 -m pip install -r requirements-dev.txt
-python3.11 -m pylint octahedroflake.py
+python3.11 -m pylint octahedroflake.py mesh_generator.py tests/test_octahedroflake.py
 ```
 
 Run the lightweight test suite:
